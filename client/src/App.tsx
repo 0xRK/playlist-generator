@@ -68,29 +68,29 @@ const SAMPLE_FACTORIES: Record<WearableProvider, () => Record<string, unknown>> 
   whoop: () => ({
     timestamp: new Date().toISOString(),
     recovery: {
-      score: jitter(82, 6, 40, 100),
-      hrv: jitter(108, 12, 40, 180),
-      resting_heart_rate: jitter(44, 3, 38, 60),
+      score: jitter(80, 18, 20, 100),
+      hrv: jitter(95, 30, 20, 190),
+      resting_heart_rate: jitter(45, 6, 35, 70),
     },
     sleep: {
-      score: jitter(88, 5, 50, 100),
-      quality_score: jitter(86, 6, 50, 100),
+      score: jitter(82, 15, 20, 100),
+      quality_score: jitter(80, 15, 20, 100),
     },
-    strain: jitter(12.7, 2, 0, 21),
+    strain: jitter(11, 4.5, 0, 21),
   }),
   oura: () => ({
     timestamp: new Date().toISOString(),
     readiness: {
-      score: jitter(61, 4, 30, 100),
-      hrv_balance: jitter(70, 6, 20, 120),
-      resting_heart_rate: jitter(51, 2, 40, 70),
+      score: jitter(58, 20, 10, 100),
+      hrv_balance: jitter(65, 18, 10, 150),
+      resting_heart_rate: jitter(52, 5, 35, 80),
     },
     sleep: {
-      score: jitter(68, 4, 40, 100),
-      resting_heart_rate: jitter(49, 2, 40, 80),
+      score: jitter(66, 16, 10, 100),
+      resting_heart_rate: jitter(50, 5, 35, 85),
     },
     activity: {
-      strain: jitter(0.45, 0.15, 0, 1),
+      strain: jitter(0.45, 0.35, 0, 1),
     },
   }),
 };

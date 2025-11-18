@@ -57,13 +57,15 @@ const MOOD_LABELS = [
 ];
 
 function computeMood(features) {
-  const weightedScore = Number((
-    (features.readinessScore * 0.3) +
-    (features.sleepScore * 0.25) +
-    (features.recoveryScore * 0.25) +
-    (features.restingHrScore * 0.1) -
-    (features.strainScore * 0.2)
-  ).toFixed(2));
+  const weightedScore = Number(
+    (
+      features.readinessScore * 0.25 +
+      features.sleepScore * 0.2 +
+      features.recoveryScore * 0.2 +
+      features.restingHrScore * 0.15 -
+      features.strainScore * 0.15
+    ).toFixed(2),
+  );
 
   const selected = MOOD_LABELS.find(config => config.condition(features));
 
