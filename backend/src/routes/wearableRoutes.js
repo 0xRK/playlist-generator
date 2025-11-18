@@ -7,6 +7,7 @@ const {
   setMoodSnapshot,
 } = require('../store/inMemoryStore');
 const { inferMood } = require('../services/moodModel');
+const whoopService = require('../services/whoopService');
 
 const router = express.Router();
 
@@ -46,6 +47,59 @@ router.post('/sync', (req, res, next) => {
       mood,
     });
   } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * Fetch Whoop data directly from API
+ * Requires user to be authenticated with Whoop (via /auth/whoop/login)
+ */
+router.post('/whoop/fetch', async (req, res, next) => {
+  try {
+    const userId = req.body.userId || req.query.userId || 'default';
+
+    // Check if user has stored tokens
+    const storedTokens = whoopService.getStoredTokens(userId);
+    if (!storedTokens || !storedTokens.accessToken) {
+      return res.status(401).json({
+        message: 'Whoop authentication required. Please authenticate at /auth/whoop/login',
+        authUrl: `${req.protocol}://${req.get('host')}/auth/whoop/login?userId=${userId}`,
+      });
+    }
+
+    // Fetch latest data from Whoop API
+    const payload = await whoopService.fetchLatestData(userId);
+
+    // Normalize the payload using the existing adapter
+    const normalized = normalize('whoop', payload);
+    setWearableData('whoop', normalized);
+
+    const aggregatedMetrics = getAggregatedMetrics();
+    const latestSnapshot = {
+      sampleCount: 1,
+      providers: ['whoop'],
+      lastUpdated: new Date().toISOString(),
+      metrics: normalized.metrics,
+    };
+    const mood = inferMood(latestSnapshot);
+    setMoodSnapshot(mood);
+
+    res.json({
+      provider: 'whoop',
+      source: 'api',
+      normalizedMetrics: normalized.metrics,
+      aggregatedMetrics,
+      mood,
+      rawData: payload,
+    });
+  } catch (error) {
+    if (error.message.includes('Authentication failed') || error.message.includes('No access token')) {
+      return res.status(401).json({
+        message: error.message,
+        authUrl: `${req.protocol}://${req.get('host')}/auth/whoop/login?userId=${req.body.userId || 'default'}`,
+      });
+    }
     next(error);
   }
 });
