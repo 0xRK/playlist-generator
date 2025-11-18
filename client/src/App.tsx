@@ -110,6 +110,7 @@ type WearableSyncResponse = {
   normalizedMetrics?: NormalizedMetrics;
   aggregatedMetrics?: AggregatedMetrics | null;
   message?: string;
+  authUrl?: string;
 };
 
 type PlaylistResponse = {
