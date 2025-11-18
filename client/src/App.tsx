@@ -150,6 +150,8 @@ function App() {
   } | null>(null);
   const currentProviderRef = useRef<WearableProvider>('whoop');
   const [hasPlaylist, setHasPlaylist] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [savedPlaylistUrl, setSavedPlaylistUrl] = useState<string | null>(null);
 
   useEffect(() => {
     const token = new URLSearchParams(window.location.search).get('access_token');
@@ -237,6 +239,54 @@ function App() {
       setIsGeneratingPlaylist(false);
     }
   }, [accessToken, mood]);
+
+  const savePlaylist = useCallback(async () => {
+    if (!accessToken) {
+      setError('Connect Spotify before saving a playlist.');
+      return;
+    }
+    const uris = tracks.map(track => track.uri).filter(Boolean);
+    if (!uris.length) {
+      setError('Generate a playlist before saving it.');
+      return;
+    }
+
+    setIsSaving(true);
+    setError(null);
+    setSavedPlaylistUrl(null);
+
+    try {
+      const response = await fetch(`${API_URL}/api/playlists/save`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          accessToken,
+          name: `Mood • ${mood?.label ?? 'playlist'}`,
+          description: 'Generated from WHOOP/Oura metrics via the playlist-generator demo.',
+          trackUris: uris,
+        }),
+      });
+
+      const data = (await response.json()) as {
+        playlistId: string;
+        playlistUrl?: string;
+        message?: string;
+      };
+
+      if (!response.ok) {
+        throw new Error(data?.message || 'Failed to save playlist');
+      }
+
+      if (data.playlistUrl) {
+        setSavedPlaylistUrl(data.playlistUrl);
+        window.open(data.playlistUrl, '_blank', 'noopener,noreferrer');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Saving playlist failed');
+    } finally {
+      setIsSaving(false);
+    }
+  }, [accessToken, mood?.label, tracks]);
 
   const formatMetric = (value: number | null, suffix = '') => {
     if (value === null || Number.isNaN(value)) {
@@ -459,6 +509,14 @@ function App() {
               ? 'Refresh playlist'
               : 'Generate playlist'}
           </button>
+          <button
+            type="button"
+            onClick={savePlaylist}
+            disabled={isSaving || !accessToken || !tracks.length}
+            className="tertiary-button"
+          >
+            {isSaving ? 'Saving…' : 'Save to Spotify'}
+          </button>
         </div>
 
         {tracks.length > 0 ? (
@@ -506,6 +564,16 @@ function App() {
         ) : (
           <div className="empty-state">
             <p>No tracks yet. Generate a playlist to see recommendations.</p>
+          </div>
+        )}
+        {savedPlaylistUrl && (
+          <div className="save-banner">
+            <p>
+              Playlist saved.{' '}
+              <a href={savedPlaylistUrl} target="_blank" rel="noreferrer">
+                Open in Spotify
+              </a>
+            </p>
           </div>
         )}
       </section>

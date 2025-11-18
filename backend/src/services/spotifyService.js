@@ -2,6 +2,10 @@ const axios = require('axios');
 
 const MARKET = process.env.SPOTIFY_MARKET || 'US';
 
+const USER_INFO_ENDPOINT = 'https://api.spotify.com/v1/me';
+const CREATE_PLAYLIST_ENDPOINT = userId => `https://api.spotify.com/v1/users/${encodeURIComponent(userId)}/playlists`;
+const ADD_TRACKS_ENDPOINT = playlistId => `https://api.spotify.com/v1/playlists/${encodeURIComponent(playlistId)}/tracks`;
+
 /**
  * Mood buckets mapped to search queries. Each query is tried in order until Spotify
  * returns recommendations; the final fallback is the mood label itself.
@@ -44,6 +48,15 @@ function getPreset(label) {
   return MOOD_PRESETS[label] || MOOD_PRESETS.reset;
 }
 
+function shuffle(array) {
+  const copy = [...array];
+  for (let i = copy.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
+}
+
 /**
  * Normalise Spotify's track payload into the lean shape the client expects.
  */
@@ -63,7 +76,7 @@ function mapTrack(track) {
  * Wrapper around Spotify's search API so we can swap out the query list, market,
  * or limit without touching the route layer.
  */
-async function searchTracks(accessToken, query, limit = 20) {
+async function searchTracks(accessToken, query, limit = 100) {
   const response = await axios.get('https://api.spotify.com/v1/search', {
     headers: { Authorization: `Bearer ${accessToken}` },
     params: {
@@ -83,12 +96,13 @@ async function fetchLiveTracks(accessToken, mood) {
 
   for (const query of attempts.filter(Boolean)) {
     try {
-      const items = await searchTracks(accessToken, query, 20);
+      const items = await searchTracks(accessToken, query, 50);
       if (items.length) {
+        const tracks = shuffle(items).slice(0, 20).map(mapTrack);
         return {
           source: 'spotify-search',
           query,
-          tracks: items.map(mapTrack),
+          tracks,
         };
       }
     } catch (error) {
@@ -115,8 +129,53 @@ function getFallbackTracks(label) {
   return FALLBACK_TRACKS[label] || FALLBACK_TRACKS.reset;
 }
 
+async function createPlaylist(accessToken, { name, description }) {
+  const userResponse = await axios.get(USER_INFO_ENDPOINT, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  const userId = userResponse.data?.id;
+  if (!userId) {
+    throw new Error('Unable to resolve Spotify user id');
+  }
+
+  const payload = {
+    name,
+    description,
+    public: false,
+    collaborative: false,
+  };
+
+  const playlistResponse = await axios.post(CREATE_PLAYLIST_ENDPOINT(userId), payload, {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+  });
+
+  return playlistResponse.data;
+}
+
+async function addTracksToPlaylist(accessToken, playlistId, trackUris = []) {
+  if (!trackUris.length) {
+    return;
+  }
+
+  await axios.post(
+    ADD_TRACKS_ENDPOINT(playlistId),
+    { uris: trackUris },
+    {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+    },
+  );
+}
+
 module.exports = {
   fetchLiveTracks,
   getFallbackTracks,
+  createPlaylist,
+  addTracksToPlaylist,
 };
 

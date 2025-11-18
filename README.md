@@ -89,6 +89,9 @@ Each route is slim and heavily commented so you can swap the in-memory store or 
 - Replace `SAMPLE_EVENTS` in the React app with live WHOOP/Oura fetches.
 - Store wearable + mood history in a database instead of memory.
 - Swap the heuristic model (`backend/src/services/moodModel.js`) for your ML model endpoint.
-- Expand Spotify flows to create playlists on behalf of the user instead of just previewing tracks.
+- Expand Spotify flows to create playlists on behalf of the user instead of just previewing tracks. The Spotify Web API makes this straightforward:
+  1. `POST /v1/users/{user_id}/playlists` – create a new empty playlist for the user (requires `playlist-modify-public` or `playlist-modify-private` scope).
+  2. `POST /v1/playlists/{playlist_id}/tracks` – add the track URIs we already fetch to that playlist.
+  3. Optionally open the playlist for the user by linking to `https://open.spotify.com/playlist/{playlist_id}` or launch the Spotify app using a `spotify:playlist:{playlist_id}` URI.
 
 Happy building! 🎧

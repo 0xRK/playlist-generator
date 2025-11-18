@@ -41,5 +41,32 @@ router.post('/', async (req, res, next) => {
   }
 });
 
+router.post('/save', async (req, res, next) => {
+  try {
+    const { accessToken, name, description, trackUris } = req.body || {};
+    if (!accessToken) {
+      return res.status(400).json({ message: 'accessToken is required to save a playlist.' });
+    }
+    if (!Array.isArray(trackUris) || !trackUris.length) {
+      return res.status(400).json({ message: 'trackUris must be a non-empty array.' });
+    }
+
+    const playlist = await spotifyService.createPlaylist(accessToken, {
+      name: name || 'Mood playlist',
+      description: description || 'Generated via the WHOOP/Oura mood demo',
+    });
+
+    await spotifyService.addTracksToPlaylist(accessToken, playlist.id, trackUris);
+
+    res.json({
+      playlistId: playlist.id,
+      playlistUrl: playlist.external_urls?.spotify,
+      snapshotId: playlist.snapshot_id,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 module.exports = router;
 
