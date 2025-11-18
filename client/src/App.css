@@ -353,6 +353,23 @@
   border-color: rgba(255, 182, 96, 0.68);
 }
 
+.tertiary-button {
+  border-radius: 999px;
+  border: 1px solid rgba(45, 155, 144, 0.45);
+  padding: 0.45rem 1.1rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  background: linear-gradient(135deg, rgba(14, 108, 114, 0.24), rgba(23, 148, 152, 0.22));
+  color: #e1fffa;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s;
+}
+
+.tertiary-button:hover:not(:disabled) {
+  background: linear-gradient(135deg, rgba(20, 146, 153, 0.32), rgba(33, 190, 184, 0.28));
+  border-color: rgba(33, 190, 184, 0.82);
+}
+
 .track-link {
   display: inline-flex;
   align-items: center;
@@ -385,6 +402,20 @@
   background: rgba(108, 32, 12, 0.6);
   padding: 0.9rem 1.2rem;
   color: #ffe9d9;
+}
+
+.save-banner {
+  margin-top: 1.1rem;
+  border-radius: 12px;
+  border: 1px solid rgba(65, 170, 160, 0.45);
+  background: rgba(15, 58, 64, 0.75);
+  padding: 0.9rem 1.2rem;
+  color: #d5fff6;
+}
+
+.save-banner a {
+  color: #79ffe6;
+  font-weight: 600;
 }
 
 @media (max-width: 700px) {

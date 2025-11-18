@@ -150,29 +150,132 @@ function App() {
   } | null>(null);
   const currentProviderRef = useRef<WearableProvider>('whoop');
   const [hasPlaylist, setHasPlaylist] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [savedPlaylistUrl, setSavedPlaylistUrl] = useState<string | null>(null);
+  const [whoopAuthenticated, setWhoopAuthenticated] = useState(false);
+  const [useRealWhoopData, setUseRealWhoopData] = useState(false);
+  const userId = 'default'; // In production, get from user session
+
+  const checkWhoopAuthStatus = useCallback(async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/wearables/whoop/fetch`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId }),
+      });
+      if (response.ok) {
+        setWhoopAuthenticated(true);
+      } else if (response.status === 401) {
+        setWhoopAuthenticated(false);
+      }
+    } catch {
+      setWhoopAuthenticated(false);
+    }
+  }, []);
 
   useEffect(() => {
-    const token = new URLSearchParams(window.location.search).get('access_token');
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get('access_token');
     if (token) {
       setAccessToken(token);
       window.history.replaceState({}, '', '/');
     }
-  }, []);
+
+    // Check if Whoop auth was successful
+    const whoopAuth = params.get('whoop_auth');
+    if (whoopAuth === 'success') {
+      setWhoopAuthenticated(true);
+      setUseRealWhoopData(true);
+      window.history.replaceState({}, '', '/');
+    }
+
+    // Check for Whoop OAuth errors
+    const whoopError = params.get('error');
+    if (whoopError) {
+      const errorDetails = params.get('details') || whoopError;
+      let errorMessage = 'Whoop authentication failed. ';
+      
+      if (whoopError === 'whoop_missing_code') {
+        errorMessage += 'Authorization code was not received. This may happen if you denied access or if there\'s a redirect URI mismatch.';
+      } else if (whoopError === 'whoop_oauth_error') {
+        errorMessage += errorDetails;
+      } else if (whoopError === 'whoop_auth_failed') {
+        errorMessage += errorDetails || 'Token exchange failed.';
+      } else {
+        errorMessage += errorDetails || whoopError;
+      }
+      
+      setError(errorMessage);
+      window.history.replaceState({}, '', '/');
+    }
+
+    // Check Whoop auth status on mount
+    checkWhoopAuthStatus();
+  }, [checkWhoopAuthStatus]);
 
   // Step 1 – redirect to Spotify OAuth.
   const loginWithSpotify = useCallback(() => {
     window.location.href = `${API_URL}/auth/login`;
   }, []);
 
+  // Whoop OAuth login
+  const loginWithWhoop = useCallback(() => {
+    window.location.href = `${API_URL}/auth/whoop/login?userId=${userId}`;
+  }, []);
+
   /**
-   * Step 2 – send a synthetic WHOOP/Oura payload to the backend so we can
-   * compute mood heuristics without calling the real APIs yet.
+   * Fetch real Whoop data from API
    */
-  const syncWearable = useCallback(async (provider: WearableProvider) => {
+  const fetchWhoopData = useCallback(async () => {
     setIsSyncing(true);
     setError(null);
 
     try {
+      const response = await fetch(`${API_URL}/api/wearables/whoop/fetch`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId }),
+      });
+
+      const data = (await response.json()) as WearableSyncResponse;
+      if (!response.ok) {
+        if (response.status === 401 && data.authUrl) {
+          setWhoopAuthenticated(false);
+          throw new Error('Whoop authentication required. Please authenticate first.');
+        }
+        throw new Error(data.message || 'Failed to fetch Whoop data');
+      }
+
+      setMood(data.mood);
+      setLatestSync({
+        provider: 'whoop',
+        normalized: data.normalizedMetrics ?? EMPTY_METRICS,
+        aggregated: data.aggregatedMetrics ?? null,
+      });
+      setWhoopAuthenticated(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Whoop data fetch failed');
+    } finally {
+      setIsSyncing(false);
+    }
+  }, []);
+
+  /**
+   * Step 2 – send a synthetic WHOOP/Oura payload to the backend so we can
+   * compute mood heuristics without calling the real APIs yet.
+   */
+  const syncWearable = useCallback(async (provider: WearableProvider, useRealData = false) => {
+    setIsSyncing(true);
+    setError(null);
+
+    try {
+      // If Whoop and user wants real data, fetch from API
+      if (provider === 'whoop' && useRealData) {
+        await fetchWhoopData();
+        return;
+      }
+
+      // Otherwise use sample data
       const response = await fetch(`${API_URL}/api/wearables/sync`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -198,7 +301,7 @@ function App() {
     } finally {
       setIsSyncing(false);
     }
-  }, []);
+  }, [fetchWhoopData]);
 
   /**
    * Step 4 – request a playlist based on the currently inferred mood.
@@ -238,6 +341,54 @@ function App() {
     }
   }, [accessToken, mood]);
 
+  const savePlaylist = useCallback(async () => {
+    if (!accessToken) {
+      setError('Connect Spotify before saving a playlist.');
+      return;
+    }
+    const uris = tracks.map(track => track.uri).filter(Boolean);
+    if (!uris.length) {
+      setError('Generate a playlist before saving it.');
+      return;
+    }
+
+    setIsSaving(true);
+    setError(null);
+    setSavedPlaylistUrl(null);
+
+    try {
+      const response = await fetch(`${API_URL}/api/playlists/save`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          accessToken,
+          name: `Mood • ${mood?.label ?? 'playlist'}`,
+          description: 'Generated from WHOOP/Oura metrics via the playlist-generator demo.',
+          trackUris: uris,
+        }),
+      });
+
+      const data = (await response.json()) as {
+        playlistId: string;
+        playlistUrl?: string;
+        message?: string;
+      };
+
+      if (!response.ok) {
+        throw new Error(data?.message || 'Failed to save playlist');
+      }
+
+      if (data.playlistUrl) {
+        setSavedPlaylistUrl(data.playlistUrl);
+        window.open(data.playlistUrl, '_blank', 'noopener,noreferrer');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Saving playlist failed');
+    } finally {
+      setIsSaving(false);
+    }
+  }, [accessToken, mood?.label, tracks]);
+
   const formatMetric = (value: number | null, suffix = '') => {
     if (value === null || Number.isNaN(value)) {
       return '—';
@@ -249,9 +400,10 @@ function App() {
   const handleSampleClick = useCallback(
     (provider: WearableProvider) => {
       currentProviderRef.current = provider;
-      syncWearable(provider).catch(err => setError(err instanceof Error ? err.message : 'Wearable sync failed'));
+      const useReal = provider === 'whoop' && useRealWhoopData && whoopAuthenticated;
+      syncWearable(provider, useReal).catch(err => setError(err instanceof Error ? err.message : 'Wearable sync failed'));
     },
-    [syncWearable],
+    [syncWearable, useRealWhoopData, whoopAuthenticated],
   );
 
   /**
@@ -260,13 +412,14 @@ function App() {
    */
   useEffect(() => {
     const intervalId = window.setInterval(() => {
-      syncWearable(currentProviderRef.current).catch(() => {
+      const useReal = currentProviderRef.current === 'whoop' && useRealWhoopData && whoopAuthenticated;
+      syncWearable(currentProviderRef.current, useReal).catch(() => {
         /* ignore auto errors; manual controls already surface messages */
       });
     }, 5000);
 
     return () => window.clearInterval(intervalId);
-  }, [syncWearable]);
+  }, [syncWearable, useRealWhoopData, whoopAuthenticated]);
 
   return (
     <div className="app-shell">
@@ -317,7 +470,7 @@ function App() {
         <div className="panel-header">
           <div>
             <p className="eyebrow">Step 2</p>
-            <h2>Send WHOOP / Oura sample data</h2>
+            <h2>Send WHOOP / Oura data</h2>
           </div>
           <span className="status-pill">{isSyncing ? 'Syncing…' : 'Idle'}</span>
         </div>
@@ -325,6 +478,41 @@ function App() {
           Data refreshes every ~5 seconds using the last provider you selected. Click a card to switch sources
           instantly.
         </p>
+
+        {/* Whoop Authentication */}
+        {WEARABLE_CARDS.find(c => c.provider === 'whoop') && (
+          <div className="whoop-auth-section" style={{ marginBottom: '1.5rem', padding: '1rem', background: '#f5f5f5', borderRadius: '8px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+              <div>
+                <strong>Whoop API Integration</strong>
+                <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.875rem', color: '#666' }}>
+                  {whoopAuthenticated 
+                    ? 'Authenticated - Using real Whoop data' 
+                    : 'Not authenticated - Using sample data'}
+                </p>
+              </div>
+              <span className={`status-pill ${whoopAuthenticated ? 'status-pill-success' : ''}`}>
+                {whoopAuthenticated ? 'Connected' : 'Not connected'}
+              </span>
+            </div>
+            {!whoopAuthenticated ? (
+              <button type="button" onClick={loginWithWhoop} style={{ marginTop: '0.5rem' }}>
+                Authenticate with Whoop
+              </button>
+            ) : (
+              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={useRealWhoopData}
+                    onChange={(e) => setUseRealWhoopData(e.target.checked)}
+                  />
+                  <span>Use real Whoop API data</span>
+                </label>
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="card-grid">
           {WEARABLE_CARDS.map(config => (
@@ -334,9 +522,15 @@ function App() {
                 <h3>{config.title}</h3>
                 <p>{config.description}</p>
               </header>
-              <button type="button" onClick={() => handleSampleClick(config.provider)} disabled={isSyncing}>
+              <button 
+                type="button" 
+                onClick={() => handleSampleClick(config.provider)} 
+                disabled={isSyncing}
+              >
                 {isSyncing && currentProviderRef.current === config.provider
                   ? 'Processing…'
+                  : config.provider === 'whoop' && useRealWhoopData && whoopAuthenticated
+                  ? 'Fetch from Whoop API'
                   : `Use ${config.provider} sample`}
               </button>
             </article>
@@ -459,6 +653,14 @@ function App() {
               ? 'Refresh playlist'
               : 'Generate playlist'}
           </button>
+          <button
+            type="button"
+            onClick={savePlaylist}
+            disabled={isSaving || !accessToken || !tracks.length}
+            className="tertiary-button"
+          >
+            {isSaving ? 'Saving…' : 'Save to Spotify'}
+          </button>
         </div>
 
         {tracks.length > 0 ? (
@@ -506,6 +708,16 @@ function App() {
         ) : (
           <div className="empty-state">
             <p>No tracks yet. Generate a playlist to see recommendations.</p>
+          </div>
+        )}
+        {savedPlaylistUrl && (
+          <div className="save-banner">
+            <p>
+              Playlist saved.{' '}
+              <a href={savedPlaylistUrl} target="_blank" rel="noreferrer">
+                Open in Spotify
+              </a>
+            </p>
           </div>
         )}
       </section>
