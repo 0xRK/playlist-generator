@@ -1,5 +1,0 @@
-# Example .env file. Rename the file to .env and update the values.
-SPOTIFY_CLIENT_ID=client_id
-SPOTIFY_CLIENT_SECRET=client_secret
-REDIRECT_URI=http://127.0.0.1:3001/callback
-CLIENT_URL=http://localhost:5173

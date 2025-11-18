@@ -4,6 +4,7 @@ const authRoutes = require('./routes/authRoutes');
 const wearableRoutes = require('./routes/wearableRoutes');
 const moodRoutes = require('./routes/moodRoutes');
 const playlistRoutes = require('./routes/playlistRoutes');
+const aiPlaylistRoutes = require('./routes/aiPlaylistRoutes');
 
 function buildCorsConfig() {
   const origins = process.env.CLIENT_URL
@@ -40,6 +41,7 @@ function createApp() {
   app.use('/api/wearables', wearableRoutes);
   app.use('/api/mood', moodRoutes);
   app.use('/api/playlists', playlistRoutes);
+  app.use('/api/ai-playlists', aiPlaylistRoutes);
 
   // Simple error handler to keep responses consistent for the skeleton.
   // eslint-disable-next-line no-unused-vars

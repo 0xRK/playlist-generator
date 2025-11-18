@@ -81,8 +81,44 @@ Visit `http://localhost:5173`, sync a sample wearable, connect Spotify, then gen
 | `/api/mood/run` | POST | Re-computes mood from the latest aggregated metrics |
 | `/api/mood` | GET | Returns the cached mood snapshot |
 | `/api/playlists` | POST | Calls Spotify Search (or the fallback list) for the current mood |
+| `/api/ai-playlists` | POST | **NEW:** Uses OpenAI to analyze biometric data + calendar events, then generates a personalized Spotify playlist |
+| `/api/ai-playlists/analyze-only` | POST | **NEW:** Gets OpenAI analysis without fetching Spotify tracks |
 
 Each route is slim and heavily commented so you can swap the in-memory store or mood heuristic with a real ML model later.
+
+### 🤖 AI-Powered Playlist Generation (NEW!)
+
+The system now includes **OpenAI integration** that analyzes biometric data alongside your daily calendar to generate highly personalized playlist recommendations. 
+
+**Key Features:**
+- Analyzes sleep quality, HRV, strain, readiness scores
+- Considers calendar events (meetings, focus blocks, workouts)
+- Generates mood classification, energy levels, tempo, and genre recommendations
+- Creates optimized Spotify search queries
+- Provides reasoning for recommendations
+
+**Setup:**
+```bash
+# Add to backend/.env
+OPENAI_API_KEY=sk-your-openai-api-key-here
+```
+
+**Quick Example:**
+```bash
+curl -X POST http://localhost:3001/api/ai-playlists \
+  -H "Content-Type: application/json" \
+  -d '{
+    "accessToken": "your-spotify-token",
+    "calendarEvents": [
+      {"title": "Deep Work", "start": "2024-01-15T09:00:00Z", "duration": 120, "type": "focus"}
+    ],
+    "biometricOverride": {
+      "metrics": {"readiness": 85, "sleepQuality": 78, "hrv": 65}
+    }
+  }'
+```
+
+See **[AI_PLAYLIST_INTEGRATION.md](backend/AI_PLAYLIST_INTEGRATION.md)** for detailed documentation and examples.
 
 ## Next Up
 
