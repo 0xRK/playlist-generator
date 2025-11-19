@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import './App.css';
-import './index.css';
+import { useCallback, useEffect, useRef, useState } from "react";
+import "./App.css";
+import "./index.css";
 
-type WearableProvider = 'whoop' | 'oura';
+type WearableProvider = "whoop" | "oura";
 
 type FeatureVector = {
   readinessScore: number;
@@ -64,7 +64,10 @@ function jitter(base: number, variance: number, min: number, max: number) {
  * Quick WHOOP/Oura sample generators so designers/devs can iterate without
  * wiring real device auth yet. Each call adds a small random delta.
  */
-const SAMPLE_FACTORIES: Record<WearableProvider, () => Record<string, unknown>> = {
+const SAMPLE_FACTORIES: Record<
+  WearableProvider,
+  () => Record<string, unknown>
+> = {
   whoop: () => ({
     timestamp: new Date().toISOString(),
     recovery: {
@@ -103,7 +106,16 @@ const EMPTY_METRICS: NormalizedMetrics = {
   restingHeartRate: null,
 };
 
-const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3001';
+const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3001";
+
+type Weather = {
+  location: string;
+  temperature: number;
+  condition: string;
+  description: string;
+  isRaining: boolean;
+  isOvercast: boolean;
+};
 
 type WearableSyncResponse = {
   mood: MoodSnapshot;
@@ -111,11 +123,12 @@ type WearableSyncResponse = {
   aggregatedMetrics?: AggregatedMetrics | null;
   message?: string;
   authUrl?: string;
+  weather?: Weather; // <-- NEW
 };
 
 type PlaylistResponse = {
   tracks: PlaylistTrack[];
-  source: 'spotify-search' | 'fallback';
+  source: "spotify-search" | "fallback";
   message?: string;
 };
 
@@ -125,14 +138,14 @@ const WEARABLE_CARDS: Array<{
   description: string;
 }> = [
   {
-    provider: 'whoop',
-    title: 'WHOOP Recovery + Strain',
-    description: 'Simulates recovery, strain, and sleep metrics from WHOOP.',
+    provider: "whoop",
+    title: "WHOOP Recovery + Strain",
+    description: "Simulates recovery, strain, and sleep metrics from WHOOP.",
   },
   {
-    provider: 'oura',
-    title: 'Oura Readiness + Sleep',
-    description: 'Uses nightly readiness, HRV balance, and activity strain.',
+    provider: "oura",
+    title: "Oura Readiness + Sleep",
+    description: "Uses nightly readiness, HRV balance, and activity strain.",
   },
 ];
 
@@ -140,16 +153,19 @@ function App() {
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [mood, setMood] = useState<MoodSnapshot | null>(null);
   const [tracks, setTracks] = useState<PlaylistTrack[]>([]);
-  const [playlistSource, setPlaylistSource] = useState<'spotify-search' | 'fallback' | null>(null);
+  const [playlistSource, setPlaylistSource] = useState<
+    "spotify-search" | "fallback" | null
+  >(null);
   const [isSyncing, setIsSyncing] = useState(false);
   const [isGeneratingPlaylist, setIsGeneratingPlaylist] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [currentWeather, setCurrentWeather] = useState<Weather>();
   const [latestSync, setLatestSync] = useState<{
     provider: WearableProvider;
     normalized: NormalizedMetrics;
     aggregated?: AggregatedMetrics | null;
   } | null>(null);
-  const currentProviderRef = useRef<WearableProvider>('whoop');
+  const currentProviderRef = useRef<WearableProvider>("whoop");
   const [hasPlaylist, setHasPlaylist] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [savedPlaylistUrl, setSavedPlaylistUrl] = useState<string | null>(null);
@@ -176,10 +192,12 @@ function App() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const token = params.get('access_token');
+    const token = params.get(
+      "access_token"
+    );
     if (token) {
       setAccessToken(token);
-      window.history.replaceState({}, '', '/');
+      window.history.replaceState({}, "", "/");
     }
 
     // Check if Whoop auth was successful
@@ -278,8 +296,8 @@ function App() {
 
       // Otherwise use sample data
       const response = await fetch(`${API_URL}/api/wearables/sync`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           provider,
           payload: SAMPLE_FACTORIES[provider](),
@@ -288,17 +306,22 @@ function App() {
 
       const data = (await response.json()) as WearableSyncResponse;
       if (!response.ok) {
-        throw new Error(data.message || 'Failed to sync wearable');
+        throw new Error(data.message || "Failed to sync wearable");
       }
 
       setMood(data.mood);
+
+      // --- Capture and save the new weather data ---
+      if (data.weather) {
+        setCurrentWeather(data.weather);
+      }
       setLatestSync({
         provider,
         normalized: data.normalizedMetrics ?? EMPTY_METRICS,
         aggregated: data.aggregatedMetrics ?? null,
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Wearable sync failed');
+      setError(err instanceof Error ? err.message : "Wearable sync failed");
     } finally {
       setIsSyncing(false);
     }
@@ -309,11 +332,11 @@ function App() {
    */
   const generatePlaylist = useCallback(async () => {
     if (!accessToken) {
-      setError('Connect Spotify before generating a playlist.');
+      setError("Connect Spotify before generating a playlist.");
       return;
     }
     if (!mood) {
-      setError('Sync WHOOP or Oura data first to compute your mood.');
+      setError("Sync WHOOP or Oura data first to compute your mood.");
       return;
     }
 
@@ -322,21 +345,23 @@ function App() {
 
     try {
       const response = await fetch(`${API_URL}/api/playlists`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ accessToken }),
       });
 
       const data = (await response.json()) as PlaylistResponse;
       if (!response.ok) {
-        throw new Error(data.message || 'Failed to generate playlist');
+        throw new Error(data.message || "Failed to generate playlist");
       }
 
       setTracks(data.tracks);
       setPlaylistSource(data.source);
       setHasPlaylist(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Playlist generation failed');
+      setError(
+        err instanceof Error ? err.message : "Playlist generation failed"
+      );
     } finally {
       setIsGeneratingPlaylist(false);
     }
@@ -390,9 +415,9 @@ function App() {
     }
   }, [accessToken, mood?.label, tracks]);
 
-  const formatMetric = (value: number | null, suffix = '') => {
+  const formatMetric = (value: number | null, suffix = "") => {
     if (value === null || Number.isNaN(value)) {
-      return '—';
+      return "—";
     }
     const display = Math.abs(value) < 10 ? value.toFixed(1) : value.toFixed(0);
     return `${display}${suffix}`;
@@ -402,9 +427,11 @@ function App() {
     (provider: WearableProvider) => {
       currentProviderRef.current = provider;
       const useReal = provider === 'whoop' && useRealWhoopData && whoopAuthenticated;
-      syncWearable(provider, useReal).catch(err => setError(err instanceof Error ? err.message : 'Wearable sync failed'));
+      syncWearable(provider, useReal).catch((err) =>
+        setError(err instanceof Error ? err.message : "Wearable sync failed")
+      );
     },
-    [syncWearable, useRealWhoopData, whoopAuthenticated],
+    [syncWearable, useRealWhoopData, whoopAuthenticated]
   );
 
   /**
@@ -429,8 +456,8 @@ function App() {
         <header className="hero">
           <h1>Physiology-aware playlists</h1>
           <p className="lede">
-            Log in with Spotify, stream WHOOP or Oura recovery data, infer your current mood, and generate a
-            playlist tuned to your physiology.
+            Log in with Spotify, stream WHOOP or Oura recovery data, infer your
+            current mood, and generate a playlist tuned to your physiology.
           </p>
         </header>
       </section>
@@ -442,18 +469,25 @@ function App() {
             <p className="eyebrow">Step 1</p>
             <h2>Connect Spotify</h2>
           </div>
-          <span className={`status-pill ${accessToken ? 'status-pill-success' : ''}`}>
-            {accessToken ? 'Connected' : 'Not connected'}
+          <span
+            className={`status-pill ${
+              accessToken ? "status-pill-success" : ""
+            }`}
+          >
+            {accessToken ? "Connected" : "Not connected"}
           </span>
         </div>
         <p className="connect-copy">
-          Connecting first prevents you from losing WHOOP/Oura data if the page reloads during Spotify OAuth.
+          Connecting first prevents you from losing WHOOP/Oura data if the page
+          reloads during Spotify OAuth.
         </p>
         <div className="connect-actions">
           {accessToken ? (
             <div className="connected-state highlight">
               <p>Spotify access token active</p>
-              <small>You can safely sync wearables and generate playlists.</small>
+              <small>
+                You can safely sync wearables and generate playlists.
+              </small>
             </div>
           ) : (
             <button type="button" onClick={loginWithSpotify}>
@@ -473,11 +507,11 @@ function App() {
             <p className="eyebrow">Step 2</p>
             <h2>Send WHOOP / Oura data</h2>
           </div>
-          <span className="status-pill">{isSyncing ? 'Syncing…' : 'Idle'}</span>
+          <span className="status-pill">{isSyncing ? "Syncing…" : "Idle"}</span>
         </div>
         <p className="step-note">
-          Data refreshes every ~5 seconds using the last provider you selected. Click a card to switch sources
-          instantly.
+          Data refreshes every ~5 seconds using the last provider you selected.
+          Click a card to switch sources instantly.
         </p>
 
         {/* Whoop Authentication */}
@@ -516,20 +550,24 @@ function App() {
         )}
 
         <div className="card-grid">
-          {WEARABLE_CARDS.map(config => (
+          {WEARABLE_CARDS.map((config) => (
             <article key={config.provider} className="card">
               <header>
                 <p className="eyebrow">{config.provider.toUpperCase()}</p>
                 <h3>{config.title}</h3>
                 <p>{config.description}</p>
               </header>
-              <button 
-                type="button" 
-                onClick={() => handleSampleClick(config.provider)} 
+              <button
+                
+                type="button"
+                
+                onClick={() => handleSampleClick(config.provider)}
+                
                 disabled={isSyncing}
+              
               >
                 {isSyncing && currentProviderRef.current === config.provider
-                  ? 'Processing…'
+                  ? "Processing…"
                   : config.provider === 'whoop' && useRealWhoopData && whoopAuthenticated
                   ? 'Fetch from Whoop API'
                   : `Use ${config.provider} sample`}
@@ -554,7 +592,7 @@ function App() {
               </div>
               <div>
                 <dt>HRV</dt>
-                <dd>{formatMetric(latestSync.normalized.hrv, ' ms')}</dd>
+                <dd>{formatMetric(latestSync.normalized.hrv, " ms")}</dd>
               </div>
               <div>
                 <dt>Sleep score</dt>
@@ -566,12 +604,46 @@ function App() {
               </div>
               <div>
                 <dt>Resting HR</dt>
-                <dd>{formatMetric(latestSync.normalized.restingHeartRate, ' bpm')}</dd>
+                <dd>
+                  {formatMetric(latestSync.normalized.restingHeartRate, " bpm")}
+                </dd>
               </div>
             </dl>
           </div>
         )}
       </section>
+
+      {currentWeather && (
+        <section className="panel connect-panel step-panel weather-panel">
+          <div className="panel-header">
+            <div>
+              <p className="eyebrow">Contextual Data</p>
+              <h2>Weather in {currentWeather.location}</h2>
+            </div>
+            <span className="status-pill status-pill-success">
+              {currentWeather.condition}
+            </span>
+          </div>
+          <dl className="metrics-grid compact">
+            <div>
+              <dt>Temperature</dt>
+              <dd>{currentWeather.temperature}°F</dd>
+            </div>
+            <div>
+              <dt>Condition</dt>
+              <dd>{currentWeather.description}</dd>
+            </div>
+            <div>
+              <dt>Precipitation</dt>
+              <dd>{currentWeather.isRaining ? "Likely" : "Clear"}</dd>
+            </div>
+            <div>
+              <dt>Sky</dt>
+              <dd>{currentWeather.isOvercast ? "Overcast" : "Clear"}</dd>
+            </div>
+          </dl>
+        </section>
+      )}
 
       {/* Step 3 – Mood summary */}
       <section className="panel step-panel">
@@ -580,7 +652,9 @@ function App() {
             <p className="eyebrow">Step 3</p>
             <h2>Mood inference</h2>
           </div>
-          <span className="status-pill mood">{mood ? mood.label : 'Awaiting data'}</span>
+          <span className="status-pill mood">
+            {mood ? mood.label : "Awaiting data"}
+          </span>
         </div>
 
         {mood ? (
@@ -590,7 +664,7 @@ function App() {
               <p className="mood-score">{Math.round(mood.score * 100)}</p>
               <p className="mood-summary">{mood.summary}</p>
               <ul>
-                {mood.recommendations.map(item => (
+                {mood.recommendations.map((item) => (
                   <li key={item}>{item}</li>
                 ))}
               </ul>
@@ -600,7 +674,9 @@ function App() {
               <dl className="metrics-grid">
                 <div>
                   <dt>Readiness</dt>
-                  <dd>{Math.round(mood.featureVector.readinessScore * 100)}%</dd>
+                  <dd>
+                    {Math.round(mood.featureVector.readinessScore * 100)}%
+                  </dd>
                 </div>
                 <div>
                   <dt>Recovery</dt>
@@ -616,7 +692,9 @@ function App() {
                 </div>
                 <div>
                   <dt>Resting HR</dt>
-                  <dd>{Math.round(mood.featureVector.restingHrScore * 100)}%</dd>
+                  <dd>
+                    {Math.round(mood.featureVector.restingHrScore * 100)}%
+                  </dd>
                 </div>
               </dl>
             </div>
@@ -635,7 +713,9 @@ function App() {
             <p className="eyebrow">Step 4</p>
             <h2>Spotify playlist</h2>
           </div>
-          <span className="status-pill">{playlistSource ? `${playlistSource} tracks` : 'Preview'}</span>
+          <span className="status-pill">
+            {playlistSource ? `${playlistSource} tracks` : "Preview"}
+          </span>
         </div>
 
         <div className="spotify-connect">
@@ -645,14 +725,26 @@ function App() {
             </div>
           )}
 
-          <button type="button" onClick={generatePlaylist} disabled={isGeneratingPlaylist || !accessToken}>
+          <button
+            type="button"
+            onClick={generatePlaylist}
+            disabled={isGeneratingPlaylist || !accessToken}
+          >
             {isGeneratingPlaylist
               ? hasPlaylist
-                ? 'Refreshing…'
-                : 'Generating…'
+                ? "Refreshing…"
+                : "Generating…"
               : hasPlaylist
-              ? 'Refresh playlist'
-              : 'Generate playlist'}
+              ? "Refresh playlist"
+              : "Generate playlist"}
+          </button>
+          <button
+            type="button"
+            onClick={savePlaylist}
+            disabled={isSaving || !accessToken || !tracks.length}
+            className="tertiary-button"
+          >
+            {isSaving ? 'Saving…' : 'Save to Spotify'}
           </button>
           <button
             type="button"
@@ -666,11 +758,15 @@ function App() {
 
         {tracks.length > 0 ? (
           <ol className="track-list">
-            {tracks.map(track => (
+            {tracks.map((track) => (
               <li key={track.id} className="track-card">
                 <div className="track-art">
                   {track.albumArt ? (
-                    <img src={track.albumArt} alt={`${track.name} cover art`} loading="lazy" />
+                    <img
+                      src={track.albumArt}
+                      alt={`${track.name} cover art`}
+                      loading="lazy"
+                    />
                   ) : (
                     <div className="track-art-placeholder">
                       {track.name.charAt(0).toUpperCase()}
@@ -679,7 +775,7 @@ function App() {
                 </div>
                 <div className="track-meta">
                   <p>{track.name}</p>
-                  <small>{track.artists.join(', ')}</small>
+                  <small>{track.artists.join(", ")}</small>
                 </div>
                 <div className="track-actions">
                   {track.externalUrl && (

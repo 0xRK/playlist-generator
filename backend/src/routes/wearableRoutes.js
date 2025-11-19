@@ -1,5 +1,7 @@
-const express = require('express');
-const { normalize, adapters } = require('../services/wearableAdapters');
+const express = require("express");
+const { normalize, adapters } = require("../services/wearableAdapters");
+// Add the new weather service
+const weatherService = require("../services/weatherService");
 const {
   setWearableData,
   getWearableData,
@@ -11,31 +13,40 @@ const whoopService = require('../services/whoopService');
 
 const router = express.Router();
 
-router.get('/providers', (_req, res) => {
+router.get("/providers", (_req, res) => {
   res.json({ providers: adapters });
 });
 
-router.get('/latest', (_req, res) => {
+router.get("/latest", (_req, res) => {
   res.json({ data: getWearableData(), aggregated: getAggregatedMetrics() });
 });
 
-router.post('/sync', (req, res, next) => {
+router.post("/sync", async (req, res, next) => {
+  // <-- NOTE: Added 'async'
+  console.log(1);
   try {
     const { provider, payload } = req.body || {};
 
     if (!provider || !payload) {
-      return res.status(400).json({ message: 'provider and payload are required' });
+      return res
+        .status(400)
+        .json({ message: "provider and payload are required" });
     }
 
     const normalized = normalize(provider, payload);
     setWearableData(provider, normalized);
 
+    // 1. Fetch Contextual Data (NEW)
+    const currentWeather = await weatherService.fetchCurrentWeather();
+
+    // 2. Aggregate Metrics & Infer Mood
     const aggregatedMetrics = getAggregatedMetrics();
     const latestSnapshot = {
       sampleCount: 1,
       providers: [provider],
       lastUpdated: new Date().toISOString(),
       metrics: normalized.metrics,
+      weather: currentWeather, // Pass the weather to the mood model (next step)
     };
     const mood = inferMood(latestSnapshot);
     setMoodSnapshot(mood);
@@ -45,6 +56,7 @@ router.post('/sync', (req, res, next) => {
       normalizedMetrics: normalized.metrics,
       aggregatedMetrics,
       mood,
+      weather: currentWeather, // <-- Return weather to client for display
     });
   } catch (error) {
     next(error);
@@ -105,4 +117,3 @@ router.post('/whoop/fetch', async (req, res, next) => {
 });
 
 module.exports = router;
-
