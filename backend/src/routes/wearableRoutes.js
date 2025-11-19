@@ -23,7 +23,6 @@ router.get("/latest", (_req, res) => {
 
 router.post("/sync", async (req, res, next) => {
   // <-- NOTE: Added 'async'
-  console.log(1);
   try {
     const { provider, payload } = req.body || {};
 
