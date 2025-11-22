@@ -9,14 +9,15 @@ const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
  * 
  * @param {Object} biometricData - Wearable device data (HRV, sleep, strain, etc.)
  * @param {Array} calendarEvents - Daily calendar events
+ * @param {}
  * @returns {Promise<Object>} Playlist parameters for Spotify
  */
-async function analyzeAndGeneratePlaylistParams(biometricData, calendarEvents = []) {
+async function analyzeAndGeneratePlaylistParams(biometricData, calendarEvents = [], weatherData, userMoodPreference = '' ) {
   if (!OPENAI_API_KEY) {
     throw new Error('OPENAI_API_KEY is not configured in environment variables');
   }
 
-  const prompt = buildPrompt(biometricData, calendarEvents);
+  const prompt = buildPrompt(biometricData, calendarEvents, weatherDat, userMoodPreference);
 
   try {
     const response = await axios.post(
@@ -26,7 +27,7 @@ async function analyzeAndGeneratePlaylistParams(biometricData, calendarEvents = 
         messages: [
           {
             role: 'system',
-            content: `You are an expert music therapist and data analyst. Your role is to analyze biometric data and daily schedules to recommend optimal music characteristics that will enhance productivity, mood, and wellbeing.
+            content: `You are an expert music therapist and data analyst. Your role is to analyze biometric data, daily schedules, weather, and the user's stated music preference to recommend optimal music characteristics that will enhance productivity, mood, and wellbeing.
 
 You must respond ONLY with valid JSON matching this exact structure:
 {
@@ -45,7 +46,9 @@ Guidelines:
 - tempo: BPM (beats per minute)
 - mood: flow (focused work), amped (high energy/workout), recovery (rest/relax), reset (balanced/flexible)
 - genres: 2-4 relevant music genres
-- searchQuery: A natural language query optimized for Spotify search`
+- searchQuery: A natural language query optimized for Spotify search
+- If the user explicitly states a desired mood or effect (e.g. "calm me down", "get me hyped"), this should strongly guide your choices as long as it is not in direct conflict with clear physiological needs (e.g. extremely low readiness + request for max intensity).`
+
           },
           {
             role: 'user',
@@ -93,9 +96,10 @@ Guidelines:
 /**
  * Builds a structured prompt from biometric data and calendar events
  */
-function buildPrompt(biometricData, calendarEvents) {
+function buildPrompt(biometricData, calendarEvents, weatherData, userMoodPreference) {
   const biometricSummary = formatBiometricData(biometricData);
   const calendarSummary = formatCalendarEvents(calendarEvents);
+  const weatherSummary = formatWeatherData(weatherData);
 
   return `Analyze the following data and recommend optimal music characteristics:
 
@@ -105,10 +109,17 @@ ${biometricSummary}
 ## DAILY SCHEDULE:
 ${calendarSummary}
 
+## UPCOMING WEATHER:
+${weatherData}
+
+## USER'S DESIRED MOOD / EFFECT FROM MUSIC:
+${moodPreferenceText}
+
 Based on this information, determine:
 1. The person's current physiological state (energy levels, recovery needs)
 2. Their cognitive demands for the day (focus work, meetings, exercise)
-3. Optimal music characteristics to support their wellbeing and productivity
+3. How weather might impact their mood and energy
+4. Optimal music characteristics to support their wellbeing and productivity
 
 Provide your analysis as JSON.`;
 }
@@ -175,6 +186,25 @@ function formatCalendarEvents(events) {
     
     lines.push(`${index + 1}. ${time} - ${title}${duration}${type}`);
   });
+
+  return lines.join('\n');
+}
+
+function formatWeatherData(weather) {
+  if (!weather || Object.keys(weather).length === 0) {
+    return 'No weather data available';
+  }
+
+  const lines = [];
+
+  // Example fields — ALL STRINGS as you requested
+  if (weather.condition) lines.push(`- Condition: ${weather.condition}`);
+  if (weather.temperature) lines.push(`- Temperature: ${weather.temperature}`);
+  if (weather.wind) lines.push(`- Wind: ${weather.wind}`);
+  if (weather.humidity) lines.push(`- Humidity: ${weather.humidity}`);
+  if (weather.precipitation) lines.push(`- Precipitation: ${weather.precipitation}`);
+  if (weather.sunrise) lines.push(`- Sunrise: ${weather.sunrise}`);
+  if (weather.sunset) lines.push(`- Sunset: ${weather.sunset}`);
 
   return lines.join('\n');
 }

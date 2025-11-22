@@ -27,7 +27,7 @@ const router = express.Router();
  */
 router.post('/', async (req, res, next) => {
   try {
-    const { accessToken, calendarEvents = [], biometricOverride } = req.body || {};
+    const { accessToken, calendarEvents = [], biometricOverride, weatherData = {}, userMoodPreference = '' } = req.body || {};
 
     // Get biometric data (either from override or stored data)
     let biometricData;
@@ -46,7 +46,9 @@ router.post('/', async (req, res, next) => {
     console.log('Requesting OpenAI analysis...');
     const aiAnalysis = await openaiService.analyzeAndGeneratePlaylistParams(
       biometricData,
-      calendarEvents
+      calendarEvents,
+      weatherData,
+      userMoodPreference
     );
 
     console.log('OpenAI recommendations:', aiAnalysis);
@@ -102,7 +104,7 @@ router.post('/', async (req, res, next) => {
  */
 router.post('/analyze-only', async (req, res, next) => {
   try {
-    const { calendarEvents = [], biometricOverride } = req.body || {};
+    const { calendarEvents = [], biometricOverride, weatherData = {},userMoodPreference = '' } = req.body || {};
 
     let biometricData;
     if (biometricOverride) {
@@ -118,7 +120,9 @@ router.post('/analyze-only', async (req, res, next) => {
 
     const aiAnalysis = await openaiService.analyzeAndGeneratePlaylistParams(
       biometricData,
-      calendarEvents
+      calendarEvents,
+      weatherData,
+      userMoodPreference
     );
 
     res.json({
