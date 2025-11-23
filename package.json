@@ -1,0 +1,12 @@
+{
+    "name": "playlist-generator-root",
+    "version": "1.0.0",
+    "private": true,
+    "scripts": {
+        "start": "concurrently \"npm run start --prefix backend\" \"npm run dev --prefix client\"",
+        "install:all": "npm install && npm install --prefix backend && npm install --prefix client"
+    },
+    "devDependencies": {
+        "concurrently": "^8.2.2"
+    }
+}
