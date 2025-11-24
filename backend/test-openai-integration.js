@@ -1,18 +1,23 @@
 #!/usr/bin/env node
 /**
- * Quick test script to verify OpenAI integration in moodModel.js
+ * Test script to verify OpenAI integration in openaiService.js
  * 
  * Usage:
  *   node backend/test-openai-integration.js
  */
 
 require('dotenv').config({ path: __dirname + '/.env' });
-const { inferMood } = require('./src/services/moodModel');
+const { analyzeAndGeneratePlaylistParams } = require('./src/services/openaiService');
 
-console.log('🧪 Testing OpenAI Integration\n');
+console.log('🧪 Testing OpenAI Integration via openaiService\n');
 console.log('Environment Check:');
 console.log('- OPENAI_API_KEY:', process.env.OPENAI_API_KEY ? '✓ Set' : '✗ Not set');
 console.log('');
+
+if (!process.env.OPENAI_API_KEY) {
+  console.error('Error: OPENAI_API_KEY is required in backend/.env to run this test.');
+  process.exit(1);
+}
 
 // Sample biometric data
 const testData = {
@@ -24,35 +29,39 @@ const testData = {
     sleepQuality: 82,
     hrv: 95,
     strain: 11,
-    restingHeartRate: 52
+    restingHeartRate: 52,
+    sleepHours: 7.5,
+    recovery: 80
   }
 };
 
-console.log('Test Data:', JSON.stringify(testData, null, 2));
-console.log('\n--- Running inferMood() ---\n');
+const testEvents = [
+  {
+    title: 'Deep Work Session',
+    start: new Date().setHours(10, 0, 0, 0),
+    duration: 90,
+    type: 'focus'
+  }
+];
 
-inferMood(testData)
+const testWeather = {
+  condition: 'Cloudy',
+  temperature: '65°F'
+};
+
+console.log('Test Data:', JSON.stringify({ biometric: testData, events: testEvents, weather: testWeather }, null, 2));
+console.log('\n--- Running analyzeAndGeneratePlaylistParams() ---\n');
+
+analyzeAndGeneratePlaylistParams(testData, testEvents, testWeather)
   .then(result => {
-    console.log('\n✓ Success! Mood inference completed.');
+    console.log('\n✓ Success! OpenAI analysis completed.');
     console.log('\nResult:');
-    console.log('- Mood:', result.label);
-    console.log('- Score:', result.score);
-    console.log('- Source:', result.source || 'heuristic');
-    console.log('- Summary:', result.summary);
-    console.log('\nFull result:', JSON.stringify(result, null, 2));
-
-    if (result.source === 'openai') {
-      console.log('\n🎉 OpenAI integration is working!');
-    } else {
-      console.log('\n⚠️  Using heuristic fallback (OpenAI not active)');
-      if (!process.env.OPENAI_API_KEY) {
-        console.log('   → Add OPENAI_API_KEY to backend/.env to enable AI inference');
-      }
-    }
+    console.log(JSON.stringify(result, null, 2));
   })
   .catch(error => {
     console.error('\n✗ Error:', error.message);
-    console.error('Stack:', error.stack);
+    if (error.response) {
+      console.error('Response Data:', error.response.data);
+    }
     process.exit(1);
   });
-

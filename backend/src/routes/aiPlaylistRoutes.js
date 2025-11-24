@@ -59,8 +59,14 @@ router.post('/', async (req, res, next) => {
 
     if (accessToken) {
       try {
-        const mood = { label: aiAnalysis.mood };
-        const result = await spotifyService.fetchLiveTracks(accessToken, mood, aiAnalysis);
+        const mood = { 
+          label: aiAnalysis.mood, 
+          playlistHints: {
+            searchQuery: aiAnalysis.searchQuery,
+            seedGenres: aiAnalysis.genres
+          }
+        };
+        const result = await spotifyService.fetchLiveTracks(accessToken, mood, true);
         tracks = result.tracks;
         source = result.source;
       } catch (spotifyError) {

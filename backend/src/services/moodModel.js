@@ -79,8 +79,6 @@ function computeMood(features) {
   };
 }
 
-const { analyzeAndGeneratePlaylistParams } = require('./openaiService');
-
 async function inferMood(aggregatedMetrics) {
   if (!aggregatedMetrics) {
     const error = new Error('No wearable data has been ingested yet.');

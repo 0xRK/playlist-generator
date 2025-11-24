@@ -407,20 +407,6 @@ function App() {
     [syncWearable, useRealWhoopData, whoopAuthenticated],
   );
 
-  /**
-   * Background auto-refresh: swap between providers every ~5 seconds to simulate
-   * real wearable streams trickling in.
-   */
-  // useEffect(() => {
-  //   const intervalId = window.setInterval(() => {
-  //     const useReal = currentProviderRef.current === 'whoop' && useRealWhoopData && whoopAuthenticated;
-  //     syncWearable(currentProviderRef.current, useReal).catch(() => {
-  //       /* ignore auto errors; manual controls already surface messages */
-  //     });
-  //   }, 5000);
-
-  //   return () => window.clearInterval(intervalId);
-  // }, [syncWearable, useRealWhoopData, whoopAuthenticated]);
 
   return (
     <div className="app-shell">
