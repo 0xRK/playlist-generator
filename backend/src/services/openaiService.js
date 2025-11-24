@@ -12,12 +12,16 @@ const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
  * @param {}
  * @returns {Promise<Object>} Playlist parameters for Spotify
  */
-async function analyzeAndGeneratePlaylistParams(biometricData, calendarEvents = [], weatherData, userMoodPreference = '' ) {
+async function analyzeAndGeneratePlaylistParams(biometricData, calendarEvents = [], weatherData, userMoodPreference = '') {
   if (!OPENAI_API_KEY) {
     throw new Error('OPENAI_API_KEY is not configured in environment variables');
   }
 
-  const prompt = buildPrompt(biometricData, calendarEvents, weatherDat, userMoodPreference);
+  const prompt = buildPrompt(biometricData, calendarEvents, weatherData, userMoodPreference);
+
+  console.log('--- OpenAI Prompt ---');
+  console.log(prompt);
+  console.log('---------------------');
 
   try {
     const response = await axios.post(
@@ -68,6 +72,11 @@ Guidelines:
     );
 
     const result = parseOpenAIResponse(response.data);
+
+    console.log('--- OpenAI Response ---');
+    console.log(JSON.stringify(result, null, 2));
+    console.log('-----------------------');
+
     return result;
 
   } catch (error) {
@@ -110,10 +119,10 @@ ${biometricSummary}
 ${calendarSummary}
 
 ## UPCOMING WEATHER:
-${weatherData}
+${weatherSummary}
 
 ## USER'S DESIRED MOOD / EFFECT FROM MUSIC:
-${moodPreferenceText}
+${userMoodPreference || 'Not specified'}
 
 Based on this information, determine:
 1. The person's current physiological state (energy levels, recovery needs)
@@ -134,11 +143,11 @@ function formatBiometricData(data) {
 
   const { metrics, providers, sampleCount, lastUpdated } = data;
   const lines = [];
-  
+
   if (providers && providers.length > 0) {
     lines.push(`Source: ${providers.join(', ')} (${sampleCount || 1} sample(s))`);
   }
-  
+
   if (lastUpdated) {
     lines.push(`Last Updated: ${new Date(lastUpdated).toLocaleString()}`);
   }
@@ -177,13 +186,13 @@ function formatCalendarEvents(events) {
   }
 
   const lines = ['Today\'s Schedule:'];
-  
+
   events.forEach((event, index) => {
     const time = event.start ? formatTime(event.start) : 'Time TBD';
     const title = event.title || event.summary || 'Untitled Event';
     const duration = event.duration ? ` (${event.duration} min)` : '';
     const type = event.type ? ` [${event.type}]` : '';
-    
+
     lines.push(`${index + 1}. ${time} - ${title}${duration}${type}`);
   });
 
@@ -215,10 +224,10 @@ function formatWeatherData(weather) {
 function formatTime(timeInput) {
   try {
     const date = new Date(timeInput);
-    return date.toLocaleTimeString('en-US', { 
-      hour: 'numeric', 
+    return date.toLocaleTimeString('en-US', {
+      hour: 'numeric',
       minute: '2-digit',
-      hour12: true 
+      hour12: true
     });
   } catch (e) {
     return timeInput.toString();
@@ -230,7 +239,7 @@ function formatTime(timeInput) {
  */
 function parseOpenAIResponse(data) {
   const content = data.choices?.[0]?.message?.content;
-  
+
   if (!content) {
     throw new Error('No content in OpenAI response');
   }
@@ -280,14 +289,14 @@ function clampValue(value, min, max, defaultValue) {
  */
 function generateSpotifySearchQuery(aiParams) {
   const { mood, genres, energy, valence } = aiParams;
-  
+
   // Build query based on recommendations
   const parts = [];
-  
+
   if (genres && genres.length > 0) {
     parts.push(genres.slice(0, 2).join(' '));
   }
-  
+
   // Add mood descriptors
   const moodDescriptors = {
     flow: 'focus deep work',
@@ -295,20 +304,20 @@ function generateSpotifySearchQuery(aiParams) {
     recovery: 'calm relaxing',
     reset: 'uplifting feel good'
   };
-  
+
   parts.push(moodDescriptors[mood] || 'chill');
-  
+
   // Add energy/valence hints
   if (energy > 0.7) {
     parts.push('upbeat');
   } else if (energy < 0.4) {
     parts.push('mellow');
   }
-  
+
   if (valence > 0.7) {
     parts.push('happy');
   }
-  
+
   return parts.join(' ');
 }
 

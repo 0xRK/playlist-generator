@@ -124,17 +124,17 @@ const WEARABLE_CARDS: Array<{
   title: string;
   description: string;
 }> = [
-  {
-    provider: 'whoop',
-    title: 'WHOOP Recovery + Strain',
-    description: 'Simulates recovery, strain, and sleep metrics from WHOOP.',
-  },
-  {
-    provider: 'oura',
-    title: 'Oura Readiness + Sleep',
-    description: 'Uses nightly readiness, HRV balance, and activity strain.',
-  },
-];
+    {
+      provider: 'whoop',
+      title: 'WHOOP Recovery + Strain',
+      description: 'Simulates recovery, strain, and sleep metrics from WHOOP.',
+    },
+    {
+      provider: 'oura',
+      title: 'Oura Readiness + Sleep',
+      description: 'Uses nightly readiness, HRV balance, and activity strain.',
+    },
+  ];
 
 function App() {
   const [accessToken, setAccessToken] = useState<string | null>(null);
@@ -195,7 +195,7 @@ function App() {
     if (whoopError) {
       const errorDetails = params.get('details') || whoopError;
       let errorMessage = 'Whoop authentication failed. ';
-      
+
       if (whoopError === 'whoop_missing_code') {
         errorMessage += 'Authorization code was not received. This may happen if you denied access or if there\'s a redirect URI mismatch.';
       } else if (whoopError === 'whoop_oauth_error') {
@@ -205,7 +205,7 @@ function App() {
       } else {
         errorMessage += errorDetails || whoopError;
       }
-      
+
       setError(errorMessage);
       window.history.replaceState({}, '', '/');
     }
@@ -411,16 +411,16 @@ function App() {
    * Background auto-refresh: swap between providers every ~5 seconds to simulate
    * real wearable streams trickling in.
    */
-  useEffect(() => {
-    const intervalId = window.setInterval(() => {
-      const useReal = currentProviderRef.current === 'whoop' && useRealWhoopData && whoopAuthenticated;
-      syncWearable(currentProviderRef.current, useReal).catch(() => {
-        /* ignore auto errors; manual controls already surface messages */
-      });
-    }, 5000);
+  // useEffect(() => {
+  //   const intervalId = window.setInterval(() => {
+  //     const useReal = currentProviderRef.current === 'whoop' && useRealWhoopData && whoopAuthenticated;
+  //     syncWearable(currentProviderRef.current, useReal).catch(() => {
+  //       /* ignore auto errors; manual controls already surface messages */
+  //     });
+  //   }, 5000);
 
-    return () => window.clearInterval(intervalId);
-  }, [syncWearable, useRealWhoopData, whoopAuthenticated]);
+  //   return () => window.clearInterval(intervalId);
+  // }, [syncWearable, useRealWhoopData, whoopAuthenticated]);
 
   return (
     <div className="app-shell">
@@ -433,10 +433,10 @@ function App() {
             playlist tuned to your physiology.
           </p>
         </header>
-      </section>
+      </section >
 
       {/* Step 1 – Spotify */}
-      <section className="panel connect-panel step-panel">
+      < section className="panel connect-panel step-panel" >
         <div className="panel-header">
           <div>
             <p className="eyebrow">Step 1</p>
@@ -464,10 +464,10 @@ function App() {
             Need to switch accounts? Reconnecting will refresh this page.
           </small>
         </div>
-      </section>
+      </section >
 
       {/* Step 2 – Wearable samples */}
-      <section className="panel step-panel">
+      < section className="panel step-panel" >
         <div className="panel-header">
           <div>
             <p className="eyebrow">Step 2</p>
@@ -481,39 +481,41 @@ function App() {
         </p>
 
         {/* Whoop Authentication */}
-        {WEARABLE_CARDS.find(c => c.provider === 'whoop') && (
-          <div className="whoop-auth-section" style={{ marginBottom: '1.5rem', padding: '1rem', background: '#f5f5f5', borderRadius: '8px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-              <div>
-                <strong>Whoop API Integration</strong>
-                <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.875rem', color: '#666' }}>
-                  {whoopAuthenticated 
-                    ? 'Authenticated - Using real Whoop data' 
-                    : 'Not authenticated - Using sample data'}
-                </p>
+        {
+          WEARABLE_CARDS.find(c => c.provider === 'whoop') && (
+            <div className="whoop-auth-section" style={{ marginBottom: '1.5rem', padding: '1rem', background: '#f5f5f5', borderRadius: '8px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                <div>
+                  <strong>Whoop API Integration</strong>
+                  <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.875rem', color: '#666' }}>
+                    {whoopAuthenticated
+                      ? 'Authenticated - Using real Whoop data'
+                      : 'Not authenticated - Using sample data'}
+                  </p>
+                </div>
+                <span className={`status-pill ${whoopAuthenticated ? 'status-pill-success' : ''}`}>
+                  {whoopAuthenticated ? 'Connected' : 'Not connected'}
+                </span>
               </div>
-              <span className={`status-pill ${whoopAuthenticated ? 'status-pill-success' : ''}`}>
-                {whoopAuthenticated ? 'Connected' : 'Not connected'}
-              </span>
+              {!whoopAuthenticated ? (
+                <button type="button" onClick={loginWithWhoop} style={{ marginTop: '0.5rem' }}>
+                  Authenticate with Whoop
+                </button>
+              ) : (
+                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={useRealWhoopData}
+                      onChange={(e) => setUseRealWhoopData(e.target.checked)}
+                    />
+                    <span>Use real Whoop API data</span>
+                  </label>
+                </div>
+              )}
             </div>
-            {!whoopAuthenticated ? (
-              <button type="button" onClick={loginWithWhoop} style={{ marginTop: '0.5rem' }}>
-                Authenticate with Whoop
-              </button>
-            ) : (
-              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
-                  <input
-                    type="checkbox"
-                    checked={useRealWhoopData}
-                    onChange={(e) => setUseRealWhoopData(e.target.checked)}
-                  />
-                  <span>Use real Whoop API data</span>
-                </label>
-              </div>
-            )}
-          </div>
-        )}
+          )
+        }
 
         <div className="card-grid">
           {WEARABLE_CARDS.map(config => (
@@ -523,58 +525,60 @@ function App() {
                 <h3>{config.title}</h3>
                 <p>{config.description}</p>
               </header>
-              <button 
-                type="button" 
-                onClick={() => handleSampleClick(config.provider)} 
+              <button
+                type="button"
+                onClick={() => handleSampleClick(config.provider)}
                 disabled={isSyncing}
               >
                 {isSyncing && currentProviderRef.current === config.provider
                   ? 'Processing…'
                   : config.provider === 'whoop' && useRealWhoopData && whoopAuthenticated
-                  ? 'Fetch from Whoop API'
-                  : `Use ${config.provider} sample`}
+                    ? 'Fetch from Whoop API'
+                    : `Use ${config.provider} sample`}
               </button>
             </article>
           ))}
         </div>
-        {latestSync && (
-          <div className="sync-summary">
-            <div className="summary-header">
-              <h3>{latestSync.provider.toUpperCase()} snapshot</h3>
-              {latestSync.aggregated && (
-                <span className="status-pill small">
-                  {latestSync.aggregated.sampleCount} samples total
-                </span>
-              )}
+        {
+          latestSync && (
+            <div className="sync-summary">
+              <div className="summary-header">
+                <h3>{latestSync.provider.toUpperCase()} snapshot</h3>
+                {latestSync.aggregated && (
+                  <span className="status-pill small">
+                    {latestSync.aggregated.sampleCount} samples total
+                  </span>
+                )}
+              </div>
+              <dl className="metrics-grid compact">
+                <div>
+                  <dt>Readiness</dt>
+                  <dd>{formatMetric(latestSync.normalized.readiness)}</dd>
+                </div>
+                <div>
+                  <dt>HRV</dt>
+                  <dd>{formatMetric(latestSync.normalized.hrv, ' ms')}</dd>
+                </div>
+                <div>
+                  <dt>Sleep score</dt>
+                  <dd>{formatMetric(latestSync.normalized.sleepQuality)}</dd>
+                </div>
+                <div>
+                  <dt>Strain</dt>
+                  <dd>{formatMetric(latestSync.normalized.strain)}</dd>
+                </div>
+                <div>
+                  <dt>Resting HR</dt>
+                  <dd>{formatMetric(latestSync.normalized.restingHeartRate, ' bpm')}</dd>
+                </div>
+              </dl>
             </div>
-            <dl className="metrics-grid compact">
-              <div>
-                <dt>Readiness</dt>
-                <dd>{formatMetric(latestSync.normalized.readiness)}</dd>
-              </div>
-              <div>
-                <dt>HRV</dt>
-                <dd>{formatMetric(latestSync.normalized.hrv, ' ms')}</dd>
-              </div>
-              <div>
-                <dt>Sleep score</dt>
-                <dd>{formatMetric(latestSync.normalized.sleepQuality)}</dd>
-              </div>
-              <div>
-                <dt>Strain</dt>
-                <dd>{formatMetric(latestSync.normalized.strain)}</dd>
-              </div>
-              <div>
-                <dt>Resting HR</dt>
-                <dd>{formatMetric(latestSync.normalized.restingHeartRate, ' bpm')}</dd>
-              </div>
-            </dl>
-          </div>
-        )}
-      </section>
+          )
+        }
+      </section >
 
       {/* Step 3 – Mood summary */}
-      <section className="panel step-panel">
+      < section className="panel step-panel" >
         <div className="panel-header">
           <div>
             <p className="eyebrow">Step 3</p>
@@ -583,53 +587,55 @@ function App() {
           <span className="status-pill mood">{mood ? mood.label : 'Awaiting data'}</span>
         </div>
 
-        {mood ? (
-          <div className="mood-grid">
-            <div>
-              <p className="score-label">Mood score</p>
-              <p className="mood-score">{Math.round(mood.score * 100)}</p>
-              <p className="mood-summary">{mood.summary}</p>
-              <ul>
-                {mood.recommendations.map(item => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
+        {
+          mood ? (
+            <div className="mood-grid">
+              <div>
+                <p className="score-label">Mood score</p>
+                <p className="mood-score">{Math.round(mood.score * 100)}</p>
+                <p className="mood-summary">{mood.summary}</p>
+                <ul>
+                  {mood.recommendations.map(item => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
+              </div>
+              <div>
+                <p className="score-label">Signal blend</p>
+                <dl className="metrics-grid">
+                  <div>
+                    <dt>Readiness</dt>
+                    <dd>{Math.round(mood.featureVector.readinessScore * 100)}%</dd>
+                  </div>
+                  <div>
+                    <dt>Recovery</dt>
+                    <dd>{Math.round(mood.featureVector.recoveryScore * 100)}%</dd>
+                  </div>
+                  <div>
+                    <dt>Sleep</dt>
+                    <dd>{Math.round(mood.featureVector.sleepScore * 100)}%</dd>
+                  </div>
+                  <div>
+                    <dt>Strain</dt>
+                    <dd>{Math.round(mood.featureVector.strainScore * 100)}%</dd>
+                  </div>
+                  <div>
+                    <dt>Resting HR</dt>
+                    <dd>{Math.round(mood.featureVector.restingHrScore * 100)}%</dd>
+                  </div>
+                </dl>
+              </div>
             </div>
-            <div>
-              <p className="score-label">Signal blend</p>
-              <dl className="metrics-grid">
-                <div>
-                  <dt>Readiness</dt>
-                  <dd>{Math.round(mood.featureVector.readinessScore * 100)}%</dd>
-                </div>
-                <div>
-                  <dt>Recovery</dt>
-                  <dd>{Math.round(mood.featureVector.recoveryScore * 100)}%</dd>
-                </div>
-                <div>
-                  <dt>Sleep</dt>
-                  <dd>{Math.round(mood.featureVector.sleepScore * 100)}%</dd>
-                </div>
-                <div>
-                  <dt>Strain</dt>
-                  <dd>{Math.round(mood.featureVector.strainScore * 100)}%</dd>
-                </div>
-                <div>
-                  <dt>Resting HR</dt>
-                  <dd>{Math.round(mood.featureVector.restingHrScore * 100)}%</dd>
-                </div>
-              </dl>
+          ) : (
+            <div className="empty-state">
+              <p>Send WHOOP or Oura test data to view mood insights.</p>
             </div>
-          </div>
-        ) : (
-          <div className="empty-state">
-            <p>Send WHOOP or Oura test data to view mood insights.</p>
-          </div>
-        )}
-      </section>
+          )
+        }
+      </section >
 
       {/* Step 4 – Playlist */}
-      <section className="panel step-panel">
+      < section className="panel step-panel" >
         <div className="panel-header">
           <div>
             <p className="eyebrow">Step 4</p>
@@ -651,8 +657,8 @@ function App() {
                 ? 'Refreshing…'
                 : 'Generating…'
               : hasPlaylist
-              ? 'Refresh playlist'
-              : 'Generate playlist'}
+                ? 'Refresh playlist'
+                : 'Generate playlist'}
           </button>
           <button
             type="button"
@@ -664,71 +670,76 @@ function App() {
           </button>
         </div>
 
-        {tracks.length > 0 ? (
-          <ol className="track-list">
-            {tracks.map(track => (
-              <li key={track.id} className="track-card">
-                <div className="track-art">
-                  {track.albumArt ? (
-                    <img src={track.albumArt} alt={`${track.name} cover art`} loading="lazy" />
-                  ) : (
-                    <div className="track-art-placeholder">
-                      {track.name.charAt(0).toUpperCase()}
-                    </div>
-                  )}
-                </div>
-                <div className="track-meta">
-                  <p>{track.name}</p>
-                  <small>{track.artists.join(', ')}</small>
-                </div>
-                <div className="track-actions">
-                  {track.externalUrl && (
-                    <a
-                      href={track.externalUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="preview-link track-link"
-                    >
-                      Open in Spotify
-                    </a>
-                  )}
-                  {track.preview_url && (
-                    <a
-                      href={track.preview_url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="preview-link track-link track-preview"
-                    >
-                      Preview
-                    </a>
-                  )}
-                </div>
-              </li>
-            ))}
-          </ol>
-        ) : (
-          <div className="empty-state">
-            <p>No tracks yet. Generate a playlist to see recommendations.</p>
-          </div>
-        )}
-        {savedPlaylistUrl && (
-          <div className="save-banner">
-            <p>
-              Playlist saved.{' '}
-              <a href={savedPlaylistUrl} target="_blank" rel="noreferrer">
-                Open in Spotify
-              </a>
-            </p>
-          </div>
-        )}
-      </section>
+        {
+          tracks.length > 0 ? (
+            <ol className="track-list">
+              {tracks.map(track => (
+                <li key={track.id} className="track-card">
+                  <div className="track-art">
+                    {track.albumArt ? (
+                      <img src={track.albumArt} alt={`${track.name} cover art`} loading="lazy" />
+                    ) : (
+                      <div className="track-art-placeholder">
+                        {track.name.charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                  </div>
+                  <div className="track-meta">
+                    <p>{track.name}</p>
+                    <small>{track.artists.join(', ')}</small>
+                  </div>
+                  <div className="track-actions">
+                    {track.externalUrl && (
+                      <a
+                        href={track.externalUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="preview-link track-link"
+                      >
+                        Open in Spotify
+                      </a>
+                    )}
+                    {track.preview_url && (
+                      <a
+                        href={track.preview_url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="preview-link track-link track-preview"
+                      >
+                        Preview
+                      </a>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ol>
+          ) : (
+            <div className="empty-state">
+              <p>No tracks yet. Generate a playlist to see recommendations.</p>
+            </div>
+          )
+        }
+        {
+          savedPlaylistUrl && (
+            <div className="save-banner">
+              <p>
+                Playlist saved.{' '}
+                <a href={savedPlaylistUrl} target="_blank" rel="noreferrer">
+                  Open in Spotify
+                </a>
+              </p>
+            </div>
+          )
+        }
+      </section >
 
       {error && (
         <div className="error-banner">
           <p>{error}</p>
         </div>
-      )}
-    </div>
+      )
+      }
+    </div >
   );
 }
 
