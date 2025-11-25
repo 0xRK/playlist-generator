@@ -1,6 +1,7 @@
 const express = require('express');
 const openaiService = require('../services/openaiService');
 const spotifyService = require('../services/spotifyService');
+const weatherService = require('../services/weatherService');
 const { getAggregatedMetrics } = require('../store/inMemoryStore');
 
 const router = express.Router();
@@ -13,8 +14,10 @@ const router = express.Router();
  * Request body:
  * {
  *   accessToken: string (optional - Spotify access token),
- *   calendarEvents: Array (optional - daily calendar events),
- *   biometricOverride: Object (optional - custom biometric data instead of stored data)
+ *   calendarBusyLevel: number (optional - daily busyness level 0-100),
+ *   biometricOverride: Object (optional - custom biometric data instead of stored data),
+ *   userInput: string (optional - user's text input/preferences),
+ *   businessContext: Object (optional - work/business context)
  * }
  * 
  * Response:
@@ -41,6 +44,9 @@ router.post('/', async (req, res, next) => {
         });
       }
     }
+
+    // Fetch current weather data
+    // const weatherData = await weatherService.fetchCurrentWeather();
 
     // Step 1: Get AI analysis and recommendations
     console.log('Requesting OpenAI analysis...');
@@ -83,6 +89,9 @@ router.post('/', async (req, res, next) => {
       aiAnalysis,
       tracks,
       source,
+      weatherData,
+      userInput,
+      businessContext,
       biometricData: {
         providers: biometricData.providers,
         metrics: biometricData.metrics,
@@ -104,8 +113,10 @@ router.post('/', async (req, res, next) => {
  * 
  * Request body:
  * {
- *   calendarEvents: Array (optional),
- *   biometricOverride: Object (optional)
+ *   calendarBusyLevel: number (optional - daily busyness level 0-100),
+ *   biometricOverride: Object (optional),
+ *   userInput: string (optional),
+ *   businessContext: Object (optional)
  * }
  */
 router.post('/analyze-only', async (req, res, next) => {
@@ -124,6 +135,9 @@ router.post('/analyze-only', async (req, res, next) => {
       }
     }
 
+    // Fetch current weather data
+    // const weatherData = await weatherService.fetchCurrentWeather();
+
     const aiAnalysis = await openaiService.analyzeAndGeneratePlaylistParams(
       biometricData,
       calendarEvents,
@@ -133,6 +147,9 @@ router.post('/analyze-only', async (req, res, next) => {
 
     res.json({
       aiAnalysis,
+      weatherData,
+      userInput,
+      businessContext,
       biometricData: {
         providers: biometricData.providers,
         metrics: biometricData.metrics,

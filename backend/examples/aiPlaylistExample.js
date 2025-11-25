@@ -67,7 +67,7 @@ async function runExample() {
   console.log();
 
   console.log('📅 CALENDAR EVENTS:');
-  console.log(openaiService.formatCalendarEvents(exampleCalendarEvents));
+  console.log(openaiService.formatCalendarBusyLevel(exampleCalendarEvents));
   console.log();
 
   console.log('🤖 Analyzing with OpenAI...');
@@ -101,7 +101,7 @@ async function runExample() {
   } catch (error) {
     console.error('❌ ERROR:', error.message);
     console.log();
-    
+
     if (error.message.includes('OPENAI_API_KEY')) {
       console.log('💡 SETUP REQUIRED:');
       console.log('  1. Get an API key from: https://platform.openai.com/api-keys');

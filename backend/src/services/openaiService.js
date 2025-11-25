@@ -1,12 +1,12 @@
-const axios = require('axios');
+const axios = require("axios");
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
+const OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
 
 /**
- * Analyzes biometric data and calendar events using OpenAI to generate
- * personalized Spotify playlist parameters.
- * 
+ * Analyzes biometric data, weather, business context, and calendar events using OpenAI
+ * to generate personalized Spotify playlist parameters.
+ *
  * @param {Object} biometricData - Wearable device data (HRV, sleep, strain, etc.)
  * @param {Array} calendarEvents - Daily calendar events
  * @param {}
@@ -14,7 +14,9 @@ const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
  */
 async function analyzeAndGeneratePlaylistParams(biometricData, calendarEvents = [], weatherData, userMoodPreference = '') {
   if (!OPENAI_API_KEY) {
-    throw new Error('OPENAI_API_KEY is not configured in environment variables');
+    throw new Error(
+      "OPENAI_API_KEY is not configured in environment variables"
+    );
   }
 
   const prompt = buildPrompt(biometricData, calendarEvents, weatherData, userMoodPreference);
@@ -27,11 +29,11 @@ async function analyzeAndGeneratePlaylistParams(biometricData, calendarEvents = 
     const response = await axios.post(
       OPENAI_API_URL,
       {
-        model: 'gpt-4o-mini', // Using gpt-4o-mini for cost efficiency, can upgrade to gpt-4o for better results
+        model: "gpt-4o-mini", // Using gpt-4o-mini for cost efficiency, can upgrade to gpt-4o for better results
         messages: [
           {
-            role: 'system',
-            content: `You are an expert music therapist and data analyst. Your role is to analyze biometric data, daily schedules, weather, and the user's stated music preference to recommend optimal music characteristics that will enhance productivity, mood, and wellbeing.
+            role: "system",
+            content: `You are an expert music therapist and data analyst. Your role is to analyze biometric data and daily schedules to recommend optimal music characteristics that will enhance productivity, mood, and wellbeing.
 
 You must respond ONLY with valid JSON matching this exact structure:
 {
@@ -55,19 +57,19 @@ Guidelines:
 
           },
           {
-            role: 'user',
-            content: prompt
-          }
+            role: "user",
+            content: prompt,
+          },
         ],
         temperature: 0.7,
         max_tokens: 500,
-        response_format: { type: "json_object" }
+        response_format: { type: "json_object" },
       },
       {
         headers: {
-          'Authorization': `Bearer ${OPENAI_API_KEY}`,
-          'Content-Type': 'application/json'
-        }
+          Authorization: `Bearer ${OPENAI_API_KEY}`,
+          "Content-Type": "application/json",
+        },
       }
     );
 
@@ -78,22 +80,21 @@ Guidelines:
     console.log('-----------------------');
 
     return result;
-
   } catch (error) {
-    console.error('OpenAI API Error:', {
+    console.error("OpenAI API Error:", {
       message: error.message,
       status: error.response?.status,
-      data: error.response?.data
+      data: error.response?.data,
     });
 
     if (error.response?.status === 401) {
-      const err = new Error('Invalid OpenAI API key');
+      const err = new Error("Invalid OpenAI API key");
       err.status = 401;
       throw err;
     }
 
     if (error.response?.status === 429) {
-      const err = new Error('OpenAI API rate limit exceeded');
+      const err = new Error("OpenAI API rate limit exceeded");
       err.status = 429;
       throw err;
     }
@@ -103,19 +104,19 @@ Guidelines:
 }
 
 /**
- * Builds a structured prompt from biometric data and calendar events
+ * Builds a structured prompt from biometric data, calendar busyness, weather, user input, and business context
  */
 function buildPrompt(biometricData, calendarEvents, weatherData, userMoodPreference) {
   const biometricSummary = formatBiometricData(biometricData);
-  const calendarSummary = formatCalendarEvents(calendarEvents);
+  const calendarSummary = formatCalendarBusyLevel(calendarEvents);
   const weatherSummary = formatWeatherData(weatherData);
 
-  return `Analyze the following data and recommend optimal music characteristics:
+  return `Analyze the following comprehensive data and recommend optimal music characteristics:
 
 ## BIOMETRIC DATA:
 ${biometricSummary}
 
-## DAILY SCHEDULE:
+## DAILY SCHEDULE BUSYNESS:
 ${calendarSummary}
 
 ## UPCOMING WEATHER:
@@ -138,14 +139,16 @@ Provide your analysis as JSON.`;
  */
 function formatBiometricData(data) {
   if (!data || !data.metrics) {
-    return 'No biometric data available';
+    return "No biometric data available";
   }
 
   const { metrics, providers, sampleCount, lastUpdated } = data;
   const lines = [];
 
   if (providers && providers.length > 0) {
-    lines.push(`Source: ${providers.join(', ')} (${sampleCount || 1} sample(s))`);
+    lines.push(
+      `Source: ${providers.join(", ")} (${sampleCount || 1} sample(s))`
+    );
   }
 
   if (lastUpdated) {
@@ -161,7 +164,10 @@ function formatBiometricData(data) {
   if (metrics.hrv !== null && metrics.hrv !== undefined) {
     lines.push(`- Heart Rate Variability (HRV): ${metrics.hrv}ms`);
   }
-  if (metrics.restingHeartRate !== null && metrics.restingHeartRate !== undefined) {
+  if (
+    metrics.restingHeartRate !== null &&
+    metrics.restingHeartRate !== undefined
+  ) {
     lines.push(`- Resting Heart Rate: ${metrics.restingHeartRate} bpm`);
   }
   if (metrics.strain !== null && metrics.strain !== undefined) {
@@ -174,15 +180,17 @@ function formatBiometricData(data) {
     lines.push(`- Recovery Score: ${metrics.recovery}/100`);
   }
 
-  return lines.length > 0 ? lines.join('\n') : 'Limited biometric data available';
+  return lines.length > 0
+    ? lines.join("\n")
+    : "Limited biometric data available";
 }
 
 /**
- * Formats calendar events into a readable summary
+ * Formats calendar busyness level into a readable summary
  */
-function formatCalendarEvents(events) {
-  if (!events || events.length === 0) {
-    return 'No calendar events provided';
+function formatCalendarBusyLevel(events) {
+  if (!events || !Array.isArray(events) || events.length === 0) {
+    return "No calendar events provided";
   }
 
   const lines = ['Today\'s Schedule:'];
@@ -195,6 +203,27 @@ function formatCalendarEvents(events) {
 
     lines.push(`${index + 1}. ${time} - ${title}${duration}${type}`);
   });
+
+  return lines.length > 0
+    ? lines.join("\n")
+    : "Limited business context available";
+}
+
+function formatWeatherData(weather) {
+  if (!weather || Object.keys(weather).length === 0) {
+    return 'No weather data available';
+  }
+
+  const lines = [];
+
+  // Example fields — ALL STRINGS as you requested
+  if (weather.condition) lines.push(`- Condition: ${weather.condition}`);
+  if (weather.temperature) lines.push(`- Temperature: ${weather.temperature}`);
+  if (weather.wind) lines.push(`- Wind: ${weather.wind}`);
+  if (weather.humidity) lines.push(`- Humidity: ${weather.humidity}`);
+  if (weather.precipitation) lines.push(`- Precipitation: ${weather.precipitation}`);
+  if (weather.sunrise) lines.push(`- Sunrise: ${weather.sunrise}`);
+  if (weather.sunset) lines.push(`- Sunset: ${weather.sunset}`);
 
   return lines.join('\n');
 }
@@ -224,10 +253,22 @@ function formatWeatherData(weather) {
 function formatTime(timeInput) {
   try {
     const date = new Date(timeInput);
-    return date.toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true
+    return date.toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    });
+  } catch (e) {
+    return timeInput.toString();
+  }
+}
+function formatTime(timeInput) {
+  try {
+    const date = new Date(timeInput);
+    return date.toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
     });
   } catch (e) {
     return timeInput.toString();
@@ -240,16 +281,17 @@ function formatTime(timeInput) {
 function parseOpenAIResponse(data) {
   const content = data.choices?.[0]?.message?.content;
 
+
   if (!content) {
-    throw new Error('No content in OpenAI response');
+    throw new Error("No content in OpenAI response");
   }
 
   let parsed;
   try {
     parsed = JSON.parse(content);
   } catch (e) {
-    console.error('Failed to parse OpenAI response:', content);
-    throw new Error('Invalid JSON response from OpenAI');
+    console.error("Failed to parse OpenAI response:", content);
+    throw new Error("Invalid JSON response from OpenAI");
   }
 
   // Validate and set defaults
@@ -259,8 +301,8 @@ function parseOpenAIResponse(data) {
     valence: clampValue(parsed.valence, 0, 1, 0.5),
     tempo: clampValue(parsed.tempo, 60, 200, 100),
     genres: Array.isArray(parsed.genres) ? parsed.genres.slice(0, 4) : [],
-    searchQuery: parsed.searchQuery || '',
-    reasoning: parsed.reasoning || 'No reasoning provided'
+    searchQuery: parsed.searchQuery || "",
+    reasoning: parsed.reasoning || "No reasoning provided",
   };
 
   return result;
@@ -270,8 +312,8 @@ function parseOpenAIResponse(data) {
  * Validates mood label
  */
 function validateMood(mood) {
-  const validMoods = ['flow', 'amped', 'recovery', 'reset'];
-  return validMoods.includes(mood) ? mood : 'reset';
+  const validMoods = ["flow", "amped", "recovery", "reset"];
+  return validMoods.includes(mood) ? mood : "reset";
 }
 
 /**
@@ -294,37 +336,40 @@ function generateSpotifySearchQuery(aiParams) {
   const parts = [];
 
   if (genres && genres.length > 0) {
-    parts.push(genres.slice(0, 2).join(' '));
+    parts.push(genres.slice(0, 2).join(" "));
   }
 
   // Add mood descriptors
   const moodDescriptors = {
-    flow: 'focus deep work',
-    amped: 'high energy workout',
-    recovery: 'calm relaxing',
-    reset: 'uplifting feel good'
+    flow: "focus deep work",
+    amped: "high energy workout",
+    recovery: "calm relaxing",
+    reset: "uplifting feel good",
   };
 
-  parts.push(moodDescriptors[mood] || 'chill');
+  parts.push(moodDescriptors[mood] || "chill");
 
   // Add energy/valence hints
   if (energy > 0.7) {
-    parts.push('upbeat');
+    parts.push("upbeat");
   } else if (energy < 0.4) {
-    parts.push('mellow');
+    parts.push("mellow");
   }
+
 
   if (valence > 0.7) {
-    parts.push('happy');
+    parts.push("happy");
   }
 
-  return parts.join(' ');
+  return parts.join(" ");
 }
 
 module.exports = {
   analyzeAndGeneratePlaylistParams,
   generateSpotifySearchQuery,
   formatBiometricData,
-  formatCalendarEvents
+  formatCalendarBusyLevel,
+  formatWeatherData,
+  // formatUserInput,
+  // formatBusinessContext,
 };
-

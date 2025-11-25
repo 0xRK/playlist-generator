@@ -96,6 +96,12 @@
   box-shadow: 0 24px 60px rgba(24, 10, 0, 0.55);
 }
 
+.weather-panel {
+  background: radial-gradient(circle at top, rgba(35, 35, 60, 0.85), rgba(15, 15, 30, 0.96));
+  border: 1px solid rgba(150, 150, 255, 0.5);
+  box-shadow: 0 24px 60px rgba(10, 10, 20, 0.55);
+}
+
 .panel-header {
   display: flex;
   justify-content: space-between;
