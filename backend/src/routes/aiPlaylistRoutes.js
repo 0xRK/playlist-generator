@@ -46,7 +46,7 @@ router.post('/', async (req, res, next) => {
     }
 
     // Fetch current weather data
-    const weatherData = await weatherService.fetchCurrentWeather();
+    // const weatherData = await weatherService.fetchCurrentWeather();
 
     // Step 1: Get AI analysis and recommendations
     console.log('Requesting OpenAI analysis...');
@@ -136,7 +136,7 @@ router.post('/analyze-only', async (req, res, next) => {
     }
 
     // Fetch current weather data
-    const weatherData = await weatherService.fetchCurrentWeather();
+    // const weatherData = await weatherService.fetchCurrentWeather();
 
     const aiAnalysis = await openaiService.analyzeAndGeneratePlaylistParams(
       biometricData,

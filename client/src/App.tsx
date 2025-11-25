@@ -620,9 +620,6 @@ function App() {
               <button
                 type="button"
                 onClick={() => handleSampleClick(config.provider)}
-              <button
-                type="button"
-                onClick={() => handleSampleClick(config.provider)}
                 disabled={isSyncing}
               >
                 {isSyncing && currentProviderRef.current === config.provider
