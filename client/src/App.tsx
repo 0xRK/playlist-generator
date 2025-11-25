@@ -155,6 +155,7 @@ function App() {
   const [savedPlaylistUrl, setSavedPlaylistUrl] = useState<string | null>(null);
   const [whoopAuthenticated, setWhoopAuthenticated] = useState(false);
   const [useRealWhoopData, setUseRealWhoopData] = useState(false);
+  const [openaiResponse, setOpenaiResponse] = useState<string | null>(null);
   const userId = 'default'; // In production, get from user session
 
   const checkWhoopAuthStatus = useCallback(async () => {
@@ -335,6 +336,12 @@ function App() {
       setTracks(data.tracks);
       setPlaylistSource(data.source);
       setHasPlaylist(true);
+      // Store OpenAI response if available
+      if ((data as any).mood?.playlistHints?.searchQuery) {
+        setOpenaiResponse((data as any).mood.playlistHints.searchQuery);
+      } else {
+        setOpenaiResponse(null);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Playlist generation failed');
     } finally {
@@ -646,6 +653,20 @@ function App() {
                 ? 'Refresh playlist'
                 : 'Generate playlist'}
           </button>
+          {openaiResponse && (
+            <div style={{
+              marginTop: '1rem',
+              padding: '1rem',
+              background: '#f0f9ff',
+              borderRadius: '8px',
+              border: '1px solid #bae6fd'
+            }}>
+              <strong style={{ color: '#0369a1' }}>✨ OpenAI Search Query:</strong>
+              <p style={{ marginTop: '0.5rem', color: '#0c4a6e', fontFamily: 'monospace' }}>
+                {openaiResponse}
+              </p>
+            </div>
+          )}
           <button
             type="button"
             onClick={savePlaylist}
