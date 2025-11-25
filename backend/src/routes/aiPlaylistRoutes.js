@@ -30,13 +30,7 @@ const router = express.Router();
  */
 router.post('/', async (req, res, next) => {
   try {
-    const { 
-      accessToken, 
-      calendarBusyLevel = 0, 
-      biometricOverride, 
-      userInput = '',
-      businessContext = null 
-    } = req.body || {};
+    const { accessToken, calendarEvents = [], biometricOverride, weatherData = {}, userMoodPreference = '' } = req.body || {};
 
     // Get biometric data (either from override or stored data)
     let biometricData;
@@ -58,10 +52,9 @@ router.post('/', async (req, res, next) => {
     console.log('Requesting OpenAI analysis...');
     const aiAnalysis = await openaiService.analyzeAndGeneratePlaylistParams(
       biometricData,
-      calendarBusyLevel,
+      calendarEvents,
       weatherData,
-      userInput,
-      businessContext
+      userMoodPreference
     );
 
     console.log('OpenAI recommendations:', aiAnalysis);
@@ -72,8 +65,14 @@ router.post('/', async (req, res, next) => {
 
     if (accessToken) {
       try {
-        const mood = { label: aiAnalysis.mood };
-        const result = await spotifyService.fetchLiveTracks(accessToken, mood, aiAnalysis);
+        const mood = { 
+          label: aiAnalysis.mood, 
+          playlistHints: {
+            searchQuery: aiAnalysis.searchQuery,
+            seedGenres: aiAnalysis.genres
+          }
+        };
+        const result = await spotifyService.fetchLiveTracks(accessToken, mood, true);
         tracks = result.tracks;
         source = result.source;
       } catch (spotifyError) {
@@ -122,12 +121,7 @@ router.post('/', async (req, res, next) => {
  */
 router.post('/analyze-only', async (req, res, next) => {
   try {
-    const { 
-      calendarBusyLevel = 0, 
-      biometricOverride, 
-      userInput = '',
-      businessContext = null 
-    } = req.body || {};
+    const { calendarEvents = [], biometricOverride, weatherData = {},userMoodPreference = '' } = req.body || {};
 
     let biometricData;
     if (biometricOverride) {
@@ -146,10 +140,9 @@ router.post('/analyze-only', async (req, res, next) => {
 
     const aiAnalysis = await openaiService.analyzeAndGeneratePlaylistParams(
       biometricData,
-      calendarBusyLevel,
+      calendarEvents,
       weatherData,
-      userInput,
-      businessContext
+      userMoodPreference
     );
 
     res.json({

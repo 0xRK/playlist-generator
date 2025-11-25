@@ -21,8 +21,7 @@ router.get("/latest", (_req, res) => {
   res.json({ data: getWearableData(), aggregated: getAggregatedMetrics() });
 });
 
-router.post("/sync", async (req, res, next) => {
-  // <-- NOTE: Added 'async'
+router.post('/sync', async (req, res, next) => {
   try {
     const { provider, payload } = req.body || {};
 
@@ -47,7 +46,7 @@ router.post("/sync", async (req, res, next) => {
       metrics: normalized.metrics,
       weather: currentWeather, // Pass the weather to the mood model (next step)
     };
-    const mood = inferMood(latestSnapshot);
+    const mood = await inferMood(latestSnapshot);
     setMoodSnapshot(mood);
 
     res.json({
@@ -93,7 +92,7 @@ router.post('/whoop/fetch', async (req, res, next) => {
       lastUpdated: new Date().toISOString(),
       metrics: normalized.metrics,
     };
-    const mood = inferMood(latestSnapshot);
+    const mood = await inferMood(latestSnapshot);
     setMoodSnapshot(mood);
 
     res.json({

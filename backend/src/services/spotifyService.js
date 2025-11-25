@@ -90,17 +90,41 @@ async function searchTracks(accessToken, query, limit = 100) {
   return response.data?.tracks?.items || [];
 }
 
-async function fetchLiveTracks(accessToken, mood) {
+async function fetchLiveTracks(accessToken, mood, useAI = true) {
+  console.log('fetchLiveTracks called with useAI:', useAI);
+  console.log('Mood object:', JSON.stringify(mood, null, 2));
+
   const preset = getPreset(mood.label);
-  const attempts = [...(preset?.queries || []), mood.label];
+
+  // If we have an AI-generated search query, prioritize it
+  const aiQuery = mood.playlistHints?.searchQuery;
+  const seedGenres = mood.playlistHints?.seedGenres || [];
+  const genreQuery = seedGenres.length ? `${seedGenres.join(' ')} ${mood.label}` : null;
+
+  console.log('AI Query:', aiQuery);
+  console.log('Genre Query:', genreQuery);
+
+  const attempts = [
+    ...(useAI && aiQuery ? [aiQuery] : []),
+    ...(useAI && genreQuery ? [genreQuery] : []),
+    ...(preset?.queries || []),
+    mood.label
+  ];
+
+  console.log('Search attempts:', attempts);
 
   for (const query of attempts.filter(Boolean)) {
     try {
       const items = await searchTracks(accessToken, query, 50);
       if (items.length) {
+        console.log(`Found ${items.length} tracks for query: "${query}"`);
         const tracks = shuffle(items).slice(0, 20).map(mapTrack);
+
+        // Determine source: it's 'openai-search' if we used the specific AI query OR the genre-based AI query
+        const isAiSource = (query === aiQuery) || (query === genreQuery);
+
         return {
-          source: 'spotify-search',
+          source: isAiSource ? 'openai-search' : 'spotify-search',
           query,
           tracks,
         };

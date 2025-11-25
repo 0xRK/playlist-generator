@@ -8,32 +8,22 @@ const OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
  * to generate personalized Spotify playlist parameters.
  *
  * @param {Object} biometricData - Wearable device data (HRV, sleep, strain, etc.)
- * @param {Number} calendarBusyLevel - Daily busyness level (0-100, where 100 is extremely busy)
- * @param {Object} weatherData - Current weather information
- * @param {String} userInput - User's text input/preferences
- * @param {Object} businessContext - Business/work context information
+ * @param {Array} calendarEvents - Daily calendar events
+ * @param {}
  * @returns {Promise<Object>} Playlist parameters for Spotify
  */
-async function analyzeAndGeneratePlaylistParams(
-  biometricData,
-  calendarBusyLevel = 0,
-  weatherData = null,
-  userInput = "",
-  businessContext = null
-) {
+async function analyzeAndGeneratePlaylistParams(biometricData, calendarEvents = [], weatherData, userMoodPreference = '') {
   if (!OPENAI_API_KEY) {
     throw new Error(
       "OPENAI_API_KEY is not configured in environment variables"
     );
   }
 
-  const prompt = buildPrompt(
-    biometricData,
-    calendarBusyLevel,
-    weatherData,
-    userInput,
-    businessContext
-  );
+  const prompt = buildPrompt(biometricData, calendarEvents, weatherData, userMoodPreference);
+
+  console.log('--- OpenAI Prompt ---');
+  console.log(prompt);
+  console.log('---------------------');
 
   try {
     const response = await axios.post(
@@ -62,7 +52,9 @@ Guidelines:
 - tempo: BPM (beats per minute)
 - mood: flow (focused work), amped (high energy/workout), recovery (rest/relax), reset (balanced/flexible)
 - genres: 2-4 relevant music genres
-- searchQuery: A natural language query optimized for Spotify search`,
+- searchQuery: A natural language query optimized for Spotify search
+- If the user explicitly states a desired mood or effect (e.g. "calm me down", "get me hyped"), this should strongly guide your choices as long as it is not in direct conflict with clear physiological needs (e.g. extremely low readiness + request for max intensity).`
+
           },
           {
             role: "user",
@@ -82,6 +74,11 @@ Guidelines:
     );
 
     const result = parseOpenAIResponse(response.data);
+
+    console.log('--- OpenAI Response ---');
+    console.log(JSON.stringify(result, null, 2));
+    console.log('-----------------------');
+
     return result;
   } catch (error) {
     console.error("OpenAI API Error:", {
@@ -109,18 +106,10 @@ Guidelines:
 /**
  * Builds a structured prompt from biometric data, calendar busyness, weather, user input, and business context
  */
-function buildPrompt(
-  biometricData,
-  calendarBusyLevel,
-  weatherData,
-  userInput,
-  businessContext
-) {
+function buildPrompt(biometricData, calendarEvents, weatherData, userMoodPreference) {
   const biometricSummary = formatBiometricData(biometricData);
-  const calendarSummary = formatCalendarBusyLevel(calendarBusyLevel);
+  const calendarSummary = formatCalendarEvents(calendarEvents);
   const weatherSummary = formatWeatherData(weatherData);
-  const userInputSummary = formatUserInput(userInput);
-  const businessSummary = formatBusinessContext(businessContext);
 
   return `Analyze the following comprehensive data and recommend optimal music characteristics:
 
@@ -130,26 +119,17 @@ ${biometricSummary}
 ## DAILY SCHEDULE BUSYNESS:
 ${calendarSummary}
 
-## CURRENT WEATHER:
+## UPCOMING WEATHER:
 ${weatherSummary}
 
-## USER PREFERENCES:
-${userInputSummary}
+## USER'S DESIRED MOOD / EFFECT FROM MUSIC:
+${userMoodPreference || 'Not specified'}
 
-## BUSINESS/WORK CONTEXT:
-${businessSummary}
-
-Based on this holistic information, determine:
-1. The person's current physiological state (energy levels, recovery needs, stress indicators)
-2. Environmental factors affecting mood (weather impact, seasonal considerations)
-3. Their cognitive and professional demands based on schedule busyness (high busyness = need calming/focus music, low busyness = more flexibility)
-4. Personal preferences and musical taste indicators
-5. Optimal music characteristics to support their wellbeing, productivity, and preferences
-
-Consider how weather might affect mood (rainy days = cozy vibes, sunny = upbeat, cold = warming music).
-Factor in business context for appropriate energy levels and focus requirements.
-Consider busyness level: high busyness (80-100) suggests need for calming/focus music, medium busyness (40-79) allows moderate energy, low busyness (0-39) permits higher energy/experimental music.
-Incorporate user preferences while balancing with physiological needs.
+Based on this information, determine:
+1. The person's current physiological state (energy levels, recovery needs)
+2. Their cognitive demands for the day (focus work, meetings, exercise)
+3. How weather might impact their mood and energy
+4. Optimal music characteristics to support their wellbeing and productivity
 
 Provide your analysis as JSON.`;
 }
@@ -213,130 +193,58 @@ function formatCalendarBusyLevel(busyLevel) {
     return "No calendar busyness data provided";
   }
 
-  const level = Math.max(0, Math.min(100, Number(busyLevel))); // Clamp between 0-100
-
-  let description;
-  if (level >= 90) {
-    description =
-      "Extremely busy - packed schedule with back-to-back commitments";
-  } else if (level >= 70) {
-    description = "Very busy - high meeting load and deadlines";
-  } else if (level >= 50) {
-    description = "Moderately busy - balanced workload";
-  } else if (level >= 30) {
-    description = "Lightly scheduled - some meetings but manageable";
-  } else if (level >= 10) {
-    description = "Minimal commitments - mostly free time";
-  } else {
-    description = "Very light schedule - lots of free time available";
-  }
-
-  return `Busyness Level: ${level}/100 (${description})`;
-}
-
-/**
- * Formats weather data into a readable summary
- */
-function formatWeatherData(weatherData) {
-  if (!weatherData) {
-    return "No weather data available";
-  }
-
-  const lines = [];
-
-  if (weatherData.location) {
-    lines.push(`Location: ${weatherData.location}`);
-  }
-
-  if (weatherData.temperature !== undefined) {
-    lines.push(`Temperature: ${weatherData.temperature}°F`);
-  }
-
-  if (weatherData.condition) {
-    lines.push(`Condition: ${weatherData.condition}`);
-  }
-
-  if (weatherData.description) {
-    lines.push(`Description: ${weatherData.description}`);
-  }
-
-  if (weatherData.isRaining !== undefined) {
-    lines.push(
-      `Precipitation: ${weatherData.isRaining ? "Yes (raining)" : "None"}`
-    );
-  }
-
-  if (weatherData.isOvercast !== undefined) {
-    lines.push(
-      `Sky: ${
-        weatherData.isOvercast ? "Overcast/Cloudy" : "Clear/Partly cloudy"
-      }`
-    );
-  }
-
-  if (weatherData.humidity !== undefined) {
-    lines.push(`Humidity: ${weatherData.humidity}%`);
-  }
-
-  if (weatherData.windSpeed !== undefined) {
-    lines.push(`Wind: ${weatherData.windSpeed} mph`);
-  }
-
-  return lines.length > 0 ? lines.join("\n") : "Limited weather data available";
-}
-
-/**
- * Formats user input/preferences into a readable summary
- */
-function formatUserInput(userInput) {
-  if (!userInput || userInput.trim() === "") {
-    return "No specific user preferences provided";
-  }
-
-  return `User says: "${userInput.trim()}"`;
-}
-
-/**
- * Formats business/work context into a readable summary
- */
-function formatBusinessContext(businessContext) {
-  if (!businessContext) {
-    return "No business context provided";
-  }
-
-  const lines = [];
-
-  if (businessContext.workMode) {
-    lines.push(`Work Mode: ${businessContext.workMode}`);
-  }
-
-  if (businessContext.environment) {
-    lines.push(`Environment: ${businessContext.environment}`);
-  }
-
-  if (businessContext.deadline) {
-    lines.push(`Deadline Pressure: ${businessContext.deadline}`);
-  }
-
-  if (businessContext.teamSize) {
-    lines.push(`Team Context: ${businessContext.teamSize}`);
-  }
-
-  if (businessContext.meetingLoad) {
-    lines.push(`Meeting Load: ${businessContext.meetingLoad}`);
-  }
-
-  if (businessContext.focusTime) {
-    lines.push(`Focus Time Available: ${businessContext.focusTime}`);
-  }
-
-  if (businessContext.industry) {
-    lines.push(`Industry: ${businessContext.industry}`);
-  }
+  const lines = ['Today\'s Schedule:'];
+  
+  events.forEach((event, index) => {
+    const time = event.start ? formatTime(event.start) : 'Time TBD';
+    const title = event.title || event.summary || 'Untitled Event';
+    const duration = event.duration ? ` (${event.duration} min)` : '';
+    const type = event.type ? ` [${event.type}]` : '';
+    
+    lines.push(`${index + 1}. ${time} - ${title}${duration}${type}`);
+  });
 
   return lines.length > 0
     ? lines.join("\n")
     : "Limited business context available";
+}
+
+function formatWeatherData(weather) {
+  if (!weather || Object.keys(weather).length === 0) {
+    return 'No weather data available';
+  }
+
+  const lines = [];
+
+  // Example fields — ALL STRINGS as you requested
+  if (weather.condition) lines.push(`- Condition: ${weather.condition}`);
+  if (weather.temperature) lines.push(`- Temperature: ${weather.temperature}`);
+  if (weather.wind) lines.push(`- Wind: ${weather.wind}`);
+  if (weather.humidity) lines.push(`- Humidity: ${weather.humidity}`);
+  if (weather.precipitation) lines.push(`- Precipitation: ${weather.precipitation}`);
+  if (weather.sunrise) lines.push(`- Sunrise: ${weather.sunrise}`);
+  if (weather.sunset) lines.push(`- Sunset: ${weather.sunset}`);
+
+  return lines.join('\n');
+}
+
+function formatWeatherData(weather) {
+  if (!weather || Object.keys(weather).length === 0) {
+    return 'No weather data available';
+  }
+
+  const lines = [];
+
+  // Example fields — ALL STRINGS as you requested
+  if (weather.condition) lines.push(`- Condition: ${weather.condition}`);
+  if (weather.temperature) lines.push(`- Temperature: ${weather.temperature}`);
+  if (weather.wind) lines.push(`- Wind: ${weather.wind}`);
+  if (weather.humidity) lines.push(`- Humidity: ${weather.humidity}`);
+  if (weather.precipitation) lines.push(`- Precipitation: ${weather.precipitation}`);
+  if (weather.sunrise) lines.push(`- Sunrise: ${weather.sunrise}`);
+  if (weather.sunset) lines.push(`- Sunset: ${weather.sunset}`);
+
+  return lines.join('\n');
 }
 
 /**
@@ -372,6 +280,7 @@ function formatTime(timeInput) {
  */
 function parseOpenAIResponse(data) {
   const content = data.choices?.[0]?.message?.content;
+
 
   if (!content) {
     throw new Error("No content in OpenAI response");
@@ -446,6 +355,7 @@ function generateSpotifySearchQuery(aiParams) {
   } else if (energy < 0.4) {
     parts.push("mellow");
   }
+
 
   if (valence > 0.7) {
     parts.push("happy");
