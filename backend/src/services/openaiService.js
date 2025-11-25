@@ -108,7 +108,7 @@ Guidelines:
  */
 function buildPrompt(biometricData, calendarEvents, weatherData, userMoodPreference) {
   const biometricSummary = formatBiometricData(biometricData);
-  const calendarSummary = formatCalendarEvents(calendarEvents);
+  const calendarSummary = formatCalendarBusyLevel(calendarEvents);
   const weatherSummary = formatWeatherData(weatherData);
 
   return `Analyze the following comprehensive data and recommend optimal music characteristics:
@@ -188,19 +188,19 @@ function formatBiometricData(data) {
 /**
  * Formats calendar busyness level into a readable summary
  */
-function formatCalendarBusyLevel(busyLevel) {
-  if (busyLevel === null || busyLevel === undefined || isNaN(busyLevel)) {
-    return "No calendar busyness data provided";
+function formatCalendarBusyLevel(events) {
+  if (!events || !Array.isArray(events) || events.length === 0) {
+    return "No calendar events provided";
   }
 
   const lines = ['Today\'s Schedule:'];
-  
+
   events.forEach((event, index) => {
     const time = event.start ? formatTime(event.start) : 'Time TBD';
     const title = event.title || event.summary || 'Untitled Event';
     const duration = event.duration ? ` (${event.duration} min)` : '';
     const type = event.type ? ` [${event.type}]` : '';
-    
+
     lines.push(`${index + 1}. ${time} - ${title}${duration}${type}`);
   });
 
