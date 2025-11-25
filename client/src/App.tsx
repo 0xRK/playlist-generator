@@ -21,6 +21,7 @@ type MoodSnapshot = {
     targetEnergy: number;
     targetValence: number;
     targetTempo: number;
+    searchQuery?: string;
   };
   featureVector: FeatureVector;
   updatedAt?: string;
@@ -130,6 +131,7 @@ type PlaylistResponse = {
   tracks: PlaylistTrack[];
   source: "spotify-search" | "fallback";
   message?: string;
+  mood?: MoodSnapshot;
 };
 
 const WEARABLE_CARDS: Array<{
@@ -181,6 +183,7 @@ function App() {
   const [savedPlaylistUrl, setSavedPlaylistUrl] = useState<string | null>(null);
   const [whoopAuthenticated, setWhoopAuthenticated] = useState(false);
   const [useRealWhoopData, setUseRealWhoopData] = useState(false);
+  const [openaiResponse, setOpenaiResponse] = useState<string | null>(null);
   const userId = "default"; // In production, get from user session
 
   const checkWhoopAuthStatus = useCallback(async () => {
@@ -232,7 +235,6 @@ function App() {
       } else {
         errorMessage += errorDetails || whoopError;
       }
-
 
       setError(errorMessage);
       window.history.replaceState({}, "", "/");
@@ -376,8 +378,8 @@ function App() {
       setPlaylistSource(data.source);
       setHasPlaylist(true);
       // Store OpenAI response if available
-      if ((data as any).mood?.playlistHints?.searchQuery) {
-        setOpenaiResponse((data as any).mood.playlistHints.searchQuery);
+      if (data.mood?.playlistHints?.searchQuery) {
+        setOpenaiResponse(data.mood.playlistHints.searchQuery);
       } else {
         setOpenaiResponse(null);
       }
@@ -488,10 +490,10 @@ function App() {
             current mood, and generate a playlist tuned to your physiology.
           </p>
         </header>
-      </section >
+      </section>
 
       {/* Step 1 – Spotify */}
-      < section className="panel connect-panel step-panel" >
+      <section className="panel connect-panel step-panel">
         <div className="panel-header">
           <div>
             <p className="eyebrow">Step 1</p>
@@ -526,10 +528,10 @@ function App() {
             Need to switch accounts? Reconnecting will refresh this page.
           </small>
         </div>
-      </section >
+      </section>
 
       {/* Step 2 – Wearable samples */}
-      < section className="panel step-panel" >
+      <section className="panel step-panel">
         <div className="panel-header">
           <div>
             <p className="eyebrow">Step 2</p>
@@ -639,46 +641,46 @@ function App() {
             </article>
           ))}
         </div>
-        {
-          latestSync && (
-            <div className="sync-summary">
-              <div className="summary-header">
-                <h3>{latestSync.provider.toUpperCase()} snapshot</h3>
-                {latestSync.aggregated && (
-                  <span className="status-pill small">
-                    {latestSync.aggregated.sampleCount} samples total
-                  </span>
-                )}
-              </div>
-              <dl className="metrics-grid compact">
-                <div>
-                  <dt>Readiness</dt>
-                  <dd>{formatMetric(latestSync.normalized.readiness)}</dd>
-                </div>
-                <div>
-                  <dt>HRV</dt>
-                  <dd>{formatMetric(latestSync.normalized.hrv, ' ms')}</dd>
-                </div>
-                <div>
-                  <dt>Sleep score</dt>
-                  <dd>{formatMetric(latestSync.normalized.sleepQuality)}</dd>
-                </div>
-                <div>
-                  <dt>Strain</dt>
-                  <dd>{formatMetric(latestSync.normalized.strain)}</dd>
-                </div>
-                <div>
-                  <dt>Resting HR</dt>
-                  <dd>{formatMetric(latestSync.normalized.restingHeartRate, ' bpm')}</dd>
-                </div>
-              </dl>
+        {latestSync && (
+          <div className="sync-summary">
+            <div className="summary-header">
+              <h3>{latestSync.provider.toUpperCase()} snapshot</h3>
+              {latestSync.aggregated && (
+                <span className="status-pill small">
+                  {latestSync.aggregated.sampleCount} samples total
+                </span>
+              )}
             </div>
-          )
-        }
-      </section >
+            <dl className="metrics-grid compact">
+              <div>
+                <dt>Readiness</dt>
+                <dd>{formatMetric(latestSync.normalized.readiness)}</dd>
+              </div>
+              <div>
+                <dt>HRV</dt>
+                <dd>{formatMetric(latestSync.normalized.hrv, " ms")}</dd>
+              </div>
+              <div>
+                <dt>Sleep score</dt>
+                <dd>{formatMetric(latestSync.normalized.sleepQuality)}</dd>
+              </div>
+              <div>
+                <dt>Strain</dt>
+                <dd>{formatMetric(latestSync.normalized.strain)}</dd>
+              </div>
+              <div>
+                <dt>Resting HR</dt>
+                <dd>
+                  {formatMetric(latestSync.normalized.restingHeartRate, " bpm")}
+                </dd>
+              </div>
+            </dl>
+          </div>
+        )}
+      </section>
 
       {/* Step 3 – Mood summary */}
-      < section className="panel step-panel" >
+      <section className="panel step-panel">
         <div className="panel-header">
           <div>
             <p className="eyebrow">Step 3</p>
@@ -887,7 +889,7 @@ function App() {
       </section>
 
       {/* Step 4 – Playlist */}
-      < section className="panel step-panel" >
+      <section className="panel step-panel">
         <div className="panel-header">
           <div>
             <p className="eyebrow">Step 4</p>
@@ -919,15 +921,25 @@ function App() {
               : "Generate playlist"}
           </button>
           {openaiResponse && (
-            <div style={{
-              marginTop: '1rem',
-              padding: '1rem',
-              background: '#f0f9ff',
-              borderRadius: '8px',
-              border: '1px solid #bae6fd'
-            }}>
-              <strong style={{ color: '#0369a1' }}>✨ OpenAI Search Query:</strong>
-              <p style={{ marginTop: '0.5rem', color: '#0c4a6e', fontFamily: 'monospace' }}>
+            <div
+              style={{
+                marginTop: "1rem",
+                padding: "1rem",
+                background: "#f0f9ff",
+                borderRadius: "8px",
+                border: "1px solid #bae6fd",
+              }}
+            >
+              <strong style={{ color: "#0369a1" }}>
+                ✨ OpenAI Search Query:
+              </strong>
+              <p
+                style={{
+                  marginTop: "0.5rem",
+                  color: "#0c4a6e",
+                  fontFamily: "monospace",
+                }}
+              >
                 {openaiResponse}
               </p>
             </div>
@@ -937,89 +949,81 @@ function App() {
             onClick={savePlaylist}
             disabled={isSaving || !accessToken || !tracks.length}
             className="tertiary-button"
-          >
-            {isSaving ? "Saving…" : "Save to Spotify"}
-          </button>
-          <button
-            type="button"
-            onClick={savePlaylist}
-            disabled={isSaving || !accessToken || !tracks.length}
-            className="tertiary-button"
+            style={{ marginTop: "1rem" }}
           >
             {isSaving ? "Saving…" : "Save to Spotify"}
           </button>
         </div>
 
-        {
-          tracks.length > 0 ? (
-            <ol className="track-list">
-              {tracks.map(track => (
-                <li key={track.id} className="track-card">
-                  <div className="track-art">
-                    {track.albumArt ? (
-                      <img src={track.albumArt} alt={`${track.name} cover art`} loading="lazy" />
-                    ) : (
-                      <div className="track-art-placeholder">
-                        {track.name.charAt(0).toUpperCase()}
-                      </div>
-                    )}
-                  </div>
-                  <div className="track-meta">
-                    <p>{track.name}</p>
-                    <small>{track.artists.join(', ')}</small>
-                  </div>
-                  <div className="track-actions">
-                    {track.externalUrl && (
-                      <a
-                        href={track.externalUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="preview-link track-link"
-                      >
-                        Open in Spotify
-                      </a>
-                    )}
-                    {track.preview_url && (
-                      <a
-                        href={track.preview_url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="preview-link track-link track-preview"
-                      >
-                        Preview
-                      </a>
-                    )}
-                  </div>
-                </li>
-              ))}
-            </ol>
-          ) : (
-            <div className="empty-state">
-              <p>No tracks yet. Generate a playlist to see recommendations.</p>
-            </div>
-          )
-        }
-        {
-          savedPlaylistUrl && (
-            <div className="save-banner">
-              <p>
-                Playlist saved.{' '}
-                <a href={savedPlaylistUrl} target="_blank" rel="noreferrer">
-                  Open in Spotify
-                </a>
-              </p>
-            </div>
-          )
-        }
-      </section >
+        {tracks.length > 0 ? (
+          <ol className="track-list">
+            {tracks.map((track) => (
+              <li key={track.id} className="track-card">
+                <div className="track-art">
+                  {track.albumArt ? (
+                    <img
+                      src={track.albumArt}
+                      alt={`${track.name} cover art`}
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className="track-art-placeholder">
+                      {track.name.charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                </div>
+                <div className="track-meta">
+                  <p>{track.name}</p>
+                  <small>{track.artists.join(", ")}</small>
+                </div>
+                <div className="track-actions">
+                  {track.externalUrl && (
+                    <a
+                      href={track.externalUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="preview-link track-link"
+                    >
+                      Open in Spotify
+                    </a>
+                  )}
+                  {track.preview_url && (
+                    <a
+                      href={track.preview_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="preview-link track-link track-preview"
+                    >
+                      Preview
+                    </a>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ol>
+        ) : (
+          <div className="empty-state">
+            <p>No tracks yet. Generate a playlist to see recommendations.</p>
+          </div>
+        )}
+        {savedPlaylistUrl && (
+          <div className="save-banner">
+            <p>
+              Playlist saved.{" "}
+              <a href={savedPlaylistUrl} target="_blank" rel="noreferrer">
+                Open in Spotify
+              </a>
+            </p>
+          </div>
+        )}
+      </section>
 
       {error && (
         <div className="error-banner">
           <p>{error}</p>
         </div>
-      )
-      }
-    </div >
+      )}
+    </div>
   );
 }
 
