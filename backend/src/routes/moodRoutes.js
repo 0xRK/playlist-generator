@@ -18,10 +18,10 @@ router.get('/', (_req, res) => {
   return res.json(mood);
 });
 
-router.post('/run', (_req, res, next) => {
+router.post('/run', async (req, res, next) => {
   try {
     const aggregated = getAggregatedMetrics();
-    const mood = inferMood(aggregated);
+    const mood = await inferMood(aggregated);
     setMoodSnapshot(mood);
     res.json({ mood, aggregated });
   } catch (error) {

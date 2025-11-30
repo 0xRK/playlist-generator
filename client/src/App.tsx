@@ -105,12 +105,22 @@ const EMPTY_METRICS: NormalizedMetrics = {
 
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3001';
 
+type Weather = {
+  location: string;
+  temperature: number;
+  condition: string;
+  description: string;
+  isRaining: boolean;
+  isOvercast: boolean;
+};
+
 type WearableSyncResponse = {
   mood: MoodSnapshot;
   normalizedMetrics?: NormalizedMetrics;
   aggregatedMetrics?: AggregatedMetrics | null;
   message?: string;
   authUrl?: string;
+  weather?: Weather;
 };
 
 type PlaylistResponse = {
@@ -125,16 +135,24 @@ const WEARABLE_CARDS: Array<{
   description: string;
 }> = [
     {
-      provider: 'whoop',
-      title: 'WHOOP Recovery + Strain',
-      description: 'Simulates recovery, strain, and sleep metrics from WHOOP.',
+      provider: "whoop",
+      title: "WHOOP Recovery + Strain",
+      description: "Simulates recovery, strain, and sleep metrics from WHOOP.",
     },
     {
-      provider: 'oura',
-      title: 'Oura Readiness + Sleep',
-      description: 'Uses nightly readiness, HRV balance, and activity strain.',
+      provider: "oura",
+      title: "Oura Readiness + Sleep",
+      description: "Uses nightly readiness, HRV balance, and activity strain.",
     },
   ];
+
+const getScheduleDescription = (load: number): string => {
+  if (load <= 0.2) return "Very Light (Open day)";
+  if (load <= 0.4) return "Light Load";
+  if (load <= 0.6) return "Moderate Load (Default)";
+  if (load <= 0.8) return "Busy Day";
+  return "Very Heavy (Back-to-back deadlines)";
+};
 
 function App() {
   const [accessToken, setAccessToken] = useState<string | null>(null);
@@ -144,6 +162,9 @@ function App() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [isGeneratingPlaylist, setIsGeneratingPlaylist] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [currentWeather, setCurrentWeather] = useState<Weather>();
+  const [manualScheduleLoad, setManualScheduleLoad] = useState<number>(0.5);
+  const [optionalUserInput, setOptionalUserInput] = useState<string>('');
   const [latestSync, setLatestSync] = useState<{
     provider: WearableProvider;
     normalized: NormalizedMetrics;
@@ -266,44 +287,54 @@ function App() {
    * Step 2 – send a synthetic WHOOP/Oura payload to the backend so we can
    * compute mood heuristics without calling the real APIs yet.
    */
-  const syncWearable = useCallback(async (provider: WearableProvider, useRealData = false) => {
-    setIsSyncing(true);
-    setError(null);
+  const syncWearable = useCallback(
+    async (provider: WearableProvider, useRealData = false) => {
+      setIsSyncing(true);
+      setError(null);
 
-    try {
-      // If Whoop and user wants real data, fetch from API
-      if (provider === 'whoop' && useRealData) {
-        await fetchWhoopData();
-        return;
-      }
+      try {
+        // If Whoop and user wants real data, fetch from API
+        if (provider === "whoop" && useRealData) {
+          await fetchWhoopData();
+          return;
+        }
 
-      // Otherwise use sample data
-      const response = await fetch(`${API_URL}/api/wearables/sync`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+        // Otherwise use sample data
+        const response = await fetch(`${API_URL}/api/wearables/sync`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            provider,
+            payload: SAMPLE_FACTORIES[provider](),
+            manualScheduleLoad,
+            optionalUserInput,
+          }),
+        });
+
+        const data = (await response.json()) as WearableSyncResponse;
+        if (!response.ok) {
+          throw new Error(data.message || "Failed to sync wearable");
+        }
+
+        setMood(data.mood);
+
+        // --- Capture and save the new weather data ---
+        if (data.weather) {
+          setCurrentWeather(data.weather);
+        }
+        setLatestSync({
           provider,
-          payload: SAMPLE_FACTORIES[provider](),
-        }),
-      });
-
-      const data = (await response.json()) as WearableSyncResponse;
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to sync wearable');
+          normalized: data.normalizedMetrics ?? EMPTY_METRICS,
+          aggregated: data.aggregatedMetrics ?? null,
+        });
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Wearable sync failed");
+      } finally {
+        setIsSyncing(false);
       }
-
-      setMood(data.mood);
-      setLatestSync({
-        provider,
-        normalized: data.normalizedMetrics ?? EMPTY_METRICS,
-        aggregated: data.aggregatedMetrics ?? null,
-      });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Wearable sync failed');
-    } finally {
-      setIsSyncing(false);
-    }
-  }, [fetchWhoopData]);
+    },
+    [fetchWhoopData, manualScheduleLoad, optionalUserInput]
+  );
 
   /**
    * Step 4 – request a playlist based on the currently inferred mood.
@@ -323,9 +354,14 @@ function App() {
 
     try {
       const response = await fetch(`${API_URL}/api/playlists`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ accessToken }),
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          accessToken,
+          weather: currentWeather,
+          scheduleLoad: manualScheduleLoad,
+          userInput: optionalUserInput,
+        }),
       });
 
       const data = (await response.json()) as PlaylistResponse;
@@ -347,7 +383,7 @@ function App() {
     } finally {
       setIsGeneratingPlaylist(false);
     }
-  }, [accessToken, mood]);
+  }, [accessToken, mood, currentWeather, manualScheduleLoad, optionalUserInput]);
 
   const savePlaylist = useCallback(async () => {
     if (!accessToken) {
@@ -411,9 +447,25 @@ function App() {
       const useReal = provider === 'whoop' && useRealWhoopData && whoopAuthenticated;
       syncWearable(provider, useReal).catch(err => setError(err instanceof Error ? err.message : 'Wearable sync failed'));
     },
-    [syncWearable, useRealWhoopData, whoopAuthenticated],
+    [syncWearable, useRealWhoopData, whoopAuthenticated]
   );
 
+  /**
+   * Background auto-refresh: simulate real wearable streams trickling in.
+   */
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      const useReal =
+        currentProviderRef.current === "whoop" &&
+        useRealWhoopData &&
+        whoopAuthenticated;
+      syncWearable(currentProviderRef.current, useReal).catch(() => {
+        /* ignore auto errors; manual controls already surface messages */
+      });
+    }, 10000);
+
+    return () => window.clearInterval(intervalId);
+  }, [syncWearable, useRealWhoopData, whoopAuthenticated]);
 
   return (
     <div className="app-shell">
@@ -435,18 +487,17 @@ function App() {
             <p className="eyebrow">Step 1</p>
             <h2>Connect Spotify</h2>
           </div>
-          <span className={`status-pill ${accessToken ? 'status-pill-success' : ''}`}>
-            {accessToken ? 'Connected' : 'Not connected'}
+          <span
+            className={`status-pill ${accessToken ? "status-pill-success" : ""
+              }`}
+          >
+            {accessToken ? "Connected" : "Not connected"}
           </span>
         </div>
-        <p className="connect-copy">
-          Connecting first prevents you from losing WHOOP/Oura data if the page reloads during Spotify OAuth.
-        </p>
         <div className="connect-actions">
           {accessToken ? (
             <div className="connected-state highlight">
               <p>Spotify access token active</p>
-              <small>You can safely sync wearables and generate playlists.</small>
             </div>
           ) : (
             <button type="button" onClick={loginWithSpotify}>
@@ -454,7 +505,7 @@ function App() {
             </button>
           )}
           <small className="connect-hint">
-            Need to switch accounts? Reconnecting will refresh this page.
+            Need to switch accounts? Refresh this page.
           </small>
         </div>
       </section >
@@ -464,51 +515,85 @@ function App() {
         <div className="panel-header">
           <div>
             <p className="eyebrow">Step 2</p>
-            <h2>Send WHOOP / Oura data</h2>
+            <h2>WHOOP / Oura data</h2>
           </div>
           <span className="status-pill">{isSyncing ? 'Syncing…' : 'Idle'}</span>
         </div>
-        <p className="step-note">
-          Data refreshes every ~5 seconds using the last provider you selected. Click a card to switch sources
-          instantly.
-        </p>
+
+        <h3>Use real Data:</h3>
 
         {/* Whoop Authentication */}
-        {
-          WEARABLE_CARDS.find(c => c.provider === 'whoop') && (
-            <div className="whoop-auth-section" style={{ marginBottom: '1.5rem', padding: '1rem', background: '#f5f5f5', borderRadius: '8px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                <div>
-                  <strong>Whoop API Integration</strong>
-                  <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.875rem', color: '#666' }}>
-                    {whoopAuthenticated
-                      ? 'Authenticated - Using real Whoop data'
-                      : 'Not authenticated - Using sample data'}
-                  </p>
-                </div>
-                <span className={`status-pill ${whoopAuthenticated ? 'status-pill-success' : ''}`}>
-                  {whoopAuthenticated ? 'Connected' : 'Not connected'}
-                </span>
+        {WEARABLE_CARDS.find((c) => c.provider === "whoop") && (
+          <div
+            className="card"
+            style={{
+              marginBottom: "1.5rem",
+              padding: "1rem",
+              borderRadius: "8px",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: "0.5rem",
+              }}
+            >
+              <div>
+                <strong>Whoop API Integration</strong>
+                <p
+                  style={{
+                    margin: "0.25rem 0 0 0",
+                    fontSize: "0.875rem",
+                    color: "#666",
+                  }}
+                >
+                  {whoopAuthenticated
+                    ? "Authenticated - Using real Whoop data"
+                    : "Not authenticated - Using sample data"}
+                </p>
               </div>
-              {!whoopAuthenticated ? (
-                <button type="button" onClick={loginWithWhoop} style={{ marginTop: '0.5rem' }}>
-                  Authenticate with Whoop
-                </button>
-              ) : (
-                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
-                    <input
-                      type="checkbox"
-                      checked={useRealWhoopData}
-                      onChange={(e) => setUseRealWhoopData(e.target.checked)}
-                    />
-                    <span>Use real Whoop API data</span>
-                  </label>
-                </div>
-              )}
+              <span
+                className={`status-pill ${whoopAuthenticated ? "status-pill-success" : ""
+                  }`}
+              >
+                {whoopAuthenticated ? "Connected" : "Not connected"}
+              </span>
             </div>
-          )
-        }
+            {!whoopAuthenticated ? (
+              <button
+                type="button"
+                onClick={loginWithWhoop}
+                style={{ marginTop: "0.5rem" }}
+              >
+                Authenticate with Whoop
+              </button>
+            ) : (
+              <div
+                style={{ display: "flex", gap: "0.5rem", marginTop: "0.5rem" }}
+              >
+                <label
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "0.5rem",
+                    cursor: "pointer",
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={useRealWhoopData}
+                    onChange={(e) => setUseRealWhoopData(e.target.checked)}
+                  />
+                  <span>Use real Whoop API data</span>
+                </label>
+              </div>
+            )}
+          </div>
+        )}
+
+        <h3>Or, use Mock Data:</h3>
 
         <div className="card-grid">
           {WEARABLE_CARDS.map(config => (
@@ -524,9 +609,11 @@ function App() {
                 disabled={isSyncing}
               >
                 {isSyncing && currentProviderRef.current === config.provider
-                  ? 'Processing…'
-                  : config.provider === 'whoop' && useRealWhoopData && whoopAuthenticated
-                    ? 'Fetch from Whoop API'
+                  ? "Processing…"
+                  : config.provider === "whoop" &&
+                    useRealWhoopData &&
+                    whoopAuthenticated
+                    ? "Fetch from Whoop API"
                     : `Use ${config.provider} sample`}
               </button>
             </article>
@@ -580,52 +667,201 @@ function App() {
           <span className="status-pill mood">{mood ? mood.label : 'Awaiting data'}</span>
         </div>
 
-        {
-          mood ? (
-            <div className="mood-grid">
-              <div>
-                <p className="score-label">Mood score</p>
-                <p className="mood-score">{Math.round(mood.score * 100)}</p>
-                <p className="mood-summary">{mood.summary}</p>
-                <ul>
-                  {mood.recommendations.map(item => (
-                    <li key={item}>{item}</li>
-                  ))}
-                </ul>
-              </div>
-              <div>
-                <p className="score-label">Signal blend</p>
-                <dl className="metrics-grid">
-                  <div>
-                    <dt>Readiness</dt>
-                    <dd>{Math.round(mood.featureVector.readinessScore * 100)}%</dd>
-                  </div>
-                  <div>
-                    <dt>Recovery</dt>
-                    <dd>{Math.round(mood.featureVector.recoveryScore * 100)}%</dd>
-                  </div>
-                  <div>
-                    <dt>Sleep</dt>
-                    <dd>{Math.round(mood.featureVector.sleepScore * 100)}%</dd>
-                  </div>
-                  <div>
-                    <dt>Strain</dt>
-                    <dd>{Math.round(mood.featureVector.strainScore * 100)}%</dd>
-                  </div>
-                  <div>
-                    <dt>Resting HR</dt>
-                    <dd>{Math.round(mood.featureVector.restingHrScore * 100)}%</dd>
-                  </div>
-                </dl>
-              </div>
+        {mood ? (
+          <div className="mood-grid">
+            <div>
+              <p className="score-label">Mood score</p>
+              <p className="mood-score">{Math.round(mood.score * 100)}</p>
+              <p className="mood-summary">{mood.summary}</p>
+              <ul>
+                {mood.recommendations.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
             </div>
-          ) : (
-            <div className="empty-state">
-              <p>Send WHOOP or Oura test data to view mood insights.</p>
+            <div>
+              <p className="score-label">Signal blend</p>
+              <dl className="metrics-grid">
+                <div>
+                  <dt>Readiness</dt>
+                  <dd>
+                    {Math.round(mood.featureVector.readinessScore * 100)}%
+                  </dd>
+                </div>
+                <div>
+                  <dt>Recovery</dt>
+                  <dd>{Math.round(mood.featureVector.recoveryScore * 100)}%</dd>
+                </div>
+                <div>
+                  <dt>Sleep</dt>
+                  <dd>{Math.round(mood.featureVector.sleepScore * 100)}%</dd>
+                </div>
+                <div>
+                  <dt>Strain</dt>
+                  <dd>{Math.round(mood.featureVector.strainScore * 100)}%</dd>
+                </div>
+                <div>
+                  <dt>Resting HR</dt>
+                  <dd>
+                    {Math.round(mood.featureVector.restingHrScore * 100)}%
+                  </dd>
+                </div>
+              </dl>
             </div>
-          )
-        }
-      </section >
+          </div>
+        ) : (
+          <div className="empty-state">
+            <p>Send WHOOP or Oura test data to view mood insights.</p>
+          </div>
+        )}
+      </section>
+
+      {/* Current Weather */}
+      {currentWeather && (
+        <section className="panel connect-panel step-panel weather-panel">
+          <div className="panel-header">
+            <div>
+              <p className="eyebrow">Contextual Data</p>
+              <h2>Weather in {currentWeather.location}</h2>
+            </div>
+            <span className="status-pill status-pill-success">
+              {currentWeather.condition}
+            </span>
+          </div>
+          <dl className="metrics-grid compact">
+            <div>
+              <dt>Temperature</dt>
+              <dd>{currentWeather.temperature}°F</dd>
+            </div>
+            <div>
+              <dt>Condition</dt>
+              <dd>{currentWeather.description}</dd>
+            </div>
+            <div>
+              <dt>Precipitation</dt>
+              <dd>{currentWeather.isRaining ? "Likely" : "Clear"}</dd>
+            </div>
+            <div>
+              <dt>Sky</dt>
+              <dd>{currentWeather.isOvercast ? "Overcast" : "Clear"}</dd>
+            </div>
+          </dl>
+        </section>
+      )}
+
+      {/* Today's Schedule Load */}
+      <section className="panel connect-panel step-panel calendar-panel">
+        <div className="panel-header">
+          <div>
+            <p className="eyebrow">Contextual Data</p>
+            <h2>Daily Schedule Load (Manual)</h2>
+          </div>
+        </div>
+
+        <label
+          htmlFor="schedule-load-slider"
+          className="connect-copy"
+          style={{ textAlign: "left", marginBottom: "0.5rem" }}
+        >
+          How busy or demanding is your schedule today?
+        </label>
+
+        <div
+          style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}
+        >
+          <input
+            id="schedule-load-slider"
+            type="range"
+            min="0"
+            max="100"
+            step="1"
+            // Map the 0.0-1.0 state back to the 0-100 slider integer value
+            value={Math.round(manualScheduleLoad * 100)}
+            onChange={(e) => {
+              // Read the 0-100 integer and convert to 0.0-1.0 float
+              const intValue = parseInt(e.target.value, 10);
+              setManualScheduleLoad(intValue / 100);
+            }}
+            style={{
+              width: "100%",
+              cursor: "pointer",
+              // Note: For advanced styling (coloring the progress bar),
+              // you might need a dedicated CSS library or more complex CSS hacks
+              WebkitAppearance: "none",
+              height: "10px",
+              borderRadius: "5px",
+              background: `linear-gradient(to right, #5be0ff 0%, #5be0ff ${manualScheduleLoad * 100
+                }%, #f0f0f0 ${manualScheduleLoad * 100}%, #f0f0f0 100%)`,
+              outline: "none",
+              opacity: "0.9",
+              transition: "opacity .15s ease-in-out",
+            }}
+          />
+
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              fontSize: "0.85rem",
+              color: "#8da0bf",
+            }}
+          >
+            <span>0% (Empty)</span>
+            <span>100% (Max Load)</span>
+          </div>
+        </div>
+
+        <p
+          className="step-note"
+          style={{ textAlign: "left", marginTop: "1rem", color: "#c4f7f0" }}
+        >
+          Current Load: {Math.round(manualScheduleLoad * 100)}% (
+          {getScheduleDescription(manualScheduleLoad)})
+        </p>
+      </section>
+
+      {/* Optional User Input */}
+      <section className="panel step-panel" style={{ marginTop: "2.5rem" }}>
+        <div className="panel-header">
+          <div>
+            <p className="eyebrow">Optional Context</p>
+            <h2>Refine Mood with Custom Input</h2>
+          </div>
+        </div>
+        <label
+          htmlFor="optional-prompt"
+          className="connect-copy"
+          style={{ textAlign: "left", margin: "0 0 0.5rem 0" }}
+        >
+          Tell us anything else influencing your mood or what you need music for
+          (e.g., "I just finished a marathon," "I need background music for
+          cleaning," or "I'm feeling nostalgic").
+        </label>
+        <textarea
+          id="optional-prompt"
+          rows={3}
+          value={optionalUserInput}
+          onChange={(e) => setOptionalUserInput(e.target.value)}
+          placeholder="E.g., I need a high-energy playlist to motivate me for a workout, not a relaxing one."
+          style={{
+            width: "100%",
+            padding: "0.75rem",
+            borderRadius: "12px",
+            backgroundColor: "#162029",
+            color: "#f4f6fb",
+            border: "1px solid #3d4a5c",
+            resize: "vertical",
+            fontFamily: "inherit",
+          }}
+        />
+        <p
+          className="step-note"
+          style={{ textAlign: "left", marginTop: "0.5rem" }}
+        >
+          This extra text is available for the AI to consider when generating
+          your playlist.
+        </p>
+      </section>
 
       {/* Step 4 – Playlist */}
       < section className="panel step-panel" >
@@ -650,8 +886,8 @@ function App() {
                 ? 'Refreshing…'
                 : 'Generating…'
               : hasPlaylist
-                ? 'Refresh playlist'
-                : 'Generate playlist'}
+                ? "Refresh playlist"
+                : "Generate playlist"}
           </button>
           {openaiResponse && (
             <div style={{

@@ -1,5 +1,10 @@
 const wearableData = {};
 let moodSnapshot = null;
+let contextData = {
+  weather: null,
+  scheduleLoad: null,
+  userInput: null,
+};
 
 function averageMetric(entries, key) {
   const values = entries
@@ -60,9 +65,36 @@ function getMoodSnapshot() {
   return moodSnapshot;
 }
 
+/**
+ * Store contextual data (weather, schedule load, user input) for use in playlist generation.
+ * Only updates fields that are explicitly provided (undefined values are ignored).
+ * @param {Object} context - Context data object
+ * @param {Object} [context.weather] - Current weather data
+ * @param {number} [context.scheduleLoad] - Schedule busyness level (0.0-1.0)
+ * @param {string} [context.userInput] - User's custom mood/music preference
+ */
+function setContextData({ weather, scheduleLoad, userInput }) {
+  if (weather !== undefined) contextData.weather = weather;
+  if (scheduleLoad !== undefined) contextData.scheduleLoad = scheduleLoad;
+  if (userInput !== undefined) contextData.userInput = userInput;
+}
+
+/**
+ * Retrieve stored contextual data for playlist generation.
+ * @returns {Object} Context data containing weather, scheduleLoad, and userInput
+ */
+function getContextData() {
+  return contextData;
+}
+
 function reset() {
   Object.keys(wearableData).forEach(key => delete wearableData[key]);
   moodSnapshot = null;
+  contextData = {
+    weather: null,
+    scheduleLoad: null,
+    userInput: null,
+  };
 }
 
 module.exports = {
@@ -71,6 +103,8 @@ module.exports = {
   getAggregatedMetrics,
   setMoodSnapshot,
   getMoodSnapshot,
+  setContextData,
+  getContextData,
   reset,
 };
 

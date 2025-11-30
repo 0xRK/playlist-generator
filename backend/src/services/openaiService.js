@@ -1,7 +1,7 @@
 const axios = require('axios');
 
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
+
+const OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
 
 /**
  * Analyzes biometric data and calendar events using OpenAI to generate
@@ -13,8 +13,11 @@ const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
  * @returns {Promise<Object>} Playlist parameters for Spotify
  */
 async function analyzeAndGeneratePlaylistParams(biometricData, calendarEvents = [], weatherData, userMoodPreference = '') {
-  if (!OPENAI_API_KEY) {
-    throw new Error('OPENAI_API_KEY is not configured in environment variables');
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    throw new Error(
+      "OPENAI_API_KEY is not configured in environment variables"
+    );
   }
 
   const prompt = buildPrompt(biometricData, calendarEvents, weatherData, userMoodPreference);
@@ -65,9 +68,9 @@ Guidelines:
       },
       {
         headers: {
-          'Authorization': `Bearer ${OPENAI_API_KEY}`,
-          'Content-Type': 'application/json'
-        }
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
       }
     );
 
@@ -196,7 +199,9 @@ function formatCalendarEvents(events) {
     lines.push(`${index + 1}. ${time} - ${title}${duration}${type}`);
   });
 
-  return lines.join('\n');
+  return lines.length > 0
+    ? lines.join("\n")
+    : "Limited business context available";
 }
 
 function formatWeatherData(weather) {
@@ -224,10 +229,10 @@ function formatWeatherData(weather) {
 function formatTime(timeInput) {
   try {
     const date = new Date(timeInput);
-    return date.toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true
+    return date.toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
     });
   } catch (e) {
     return timeInput.toString();

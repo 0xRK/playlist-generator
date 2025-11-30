@@ -1,10 +1,12 @@
-const express = require('express');
-const { normalize, adapters } = require('../services/wearableAdapters');
+const express = require("express");
+const { normalize, adapters } = require("../services/wearableAdapters");
+const weatherService = require("../services/weatherService");
 const {
   setWearableData,
   getWearableData,
   getAggregatedMetrics,
   setMoodSnapshot,
+  setContextData,
 } = require('../store/inMemoryStore');
 const { inferMood } = require('../services/moodModel');
 const whoopService = require('../services/whoopService');
@@ -21,7 +23,7 @@ router.get('/latest', (_req, res) => {
 
 router.post('/sync', async (req, res, next) => {
   try {
-    const { provider, payload } = req.body || {};
+    const { provider, payload, manualScheduleLoad, optionalUserInput } = req.body || {};
 
     if (!provider || !payload) {
       return res.status(400).json({ message: 'provider and payload are required' });
@@ -30,12 +32,22 @@ router.post('/sync', async (req, res, next) => {
     const normalized = normalize(provider, payload);
     setWearableData(provider, normalized);
 
+    const currentWeather = await weatherService.fetchCurrentWeather();
+
+    // Store context data for later use by OpenAI
+    setContextData({
+      weather: currentWeather,
+      scheduleLoad: manualScheduleLoad,
+      userInput: optionalUserInput,
+    });
+
     const aggregatedMetrics = getAggregatedMetrics();
     const latestSnapshot = {
       sampleCount: 1,
       providers: [provider],
       lastUpdated: new Date().toISOString(),
       metrics: normalized.metrics,
+      weather: currentWeather,
     };
     const mood = await inferMood(latestSnapshot);
     setMoodSnapshot(mood);
@@ -45,6 +57,7 @@ router.post('/sync', async (req, res, next) => {
       normalizedMetrics: normalized.metrics,
       aggregatedMetrics,
       mood,
+      weather: currentWeather,
     });
   } catch (error) {
     next(error);

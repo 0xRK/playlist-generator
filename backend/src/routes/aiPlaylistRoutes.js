@@ -36,8 +36,8 @@ router.post('/', async (req, res, next) => {
     } else {
       biometricData = getAggregatedMetrics();
       if (!biometricData) {
-        return res.status(400).json({ 
-          message: 'No biometric data available. Please sync wearable data first or provide biometricOverride.' 
+        return res.status(400).json({
+          message: 'No biometric data available. Please sync wearable data first or provide biometricOverride.'
         });
       }
     }
@@ -59,8 +59,8 @@ router.post('/', async (req, res, next) => {
 
     if (accessToken) {
       try {
-        const mood = { 
-          label: aiAnalysis.mood, 
+        const mood = {
+          label: aiAnalysis.mood,
           playlistHints: {
             searchQuery: aiAnalysis.searchQuery,
             seedGenres: aiAnalysis.genres
@@ -83,6 +83,9 @@ router.post('/', async (req, res, next) => {
       aiAnalysis,
       tracks,
       source,
+      weatherData,
+
+      userMoodPreference,
       biometricData: {
         providers: biometricData.providers,
         metrics: biometricData.metrics,
@@ -110,7 +113,7 @@ router.post('/', async (req, res, next) => {
  */
 router.post('/analyze-only', async (req, res, next) => {
   try {
-    const { calendarEvents = [], biometricOverride, weatherData = {},userMoodPreference = '' } = req.body || {};
+    const { calendarEvents = [], biometricOverride, weatherData = {}, userMoodPreference = '' } = req.body || {};
 
     let biometricData;
     if (biometricOverride) {
@@ -118,8 +121,8 @@ router.post('/analyze-only', async (req, res, next) => {
     } else {
       biometricData = getAggregatedMetrics();
       if (!biometricData) {
-        return res.status(400).json({ 
-          message: 'No biometric data available. Please sync wearable data first or provide biometricOverride.' 
+        return res.status(400).json({
+          message: 'No biometric data available. Please sync wearable data first or provide biometricOverride.'
         });
       }
     }
@@ -133,6 +136,9 @@ router.post('/analyze-only', async (req, res, next) => {
 
     res.json({
       aiAnalysis,
+      weatherData,
+
+      userMoodPreference,
       biometricData: {
         providers: biometricData.providers,
         metrics: biometricData.metrics,
