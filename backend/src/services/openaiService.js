@@ -34,7 +34,7 @@ async function analyzeAndGeneratePlaylistParams(biometricData, calendarEvents = 
         messages: [
           {
             role: "system",
-            content: `You are an expert music therapist and data analyst. Your role is to analyze biometric data and daily schedules to recommend optimal music characteristics that will enhance productivity, mood, and wellbeing.
+            content: `You are an expert music therapist and data analyst. Your role is to analyze biometric data, daily schedules, weather, and the user's stated music preference to recommend optimal music characteristics that will enhance productivity, mood, and wellbeing.
 
 You must respond ONLY with valid JSON matching this exact structure:
 {
