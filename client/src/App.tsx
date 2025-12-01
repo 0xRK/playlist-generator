@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import './App.css';
-import './index.css';
+import { useCallback, useEffect, useRef, useState } from "react";
+import "./App.css";
+import "./index.css";
 
-type WearableProvider = 'whoop' | 'oura';
+type WearableProvider = "whoop" | "oura";
 
 type FeatureVector = {
   readinessScore: number;
@@ -21,6 +21,7 @@ type MoodSnapshot = {
     targetEnergy: number;
     targetValence: number;
     targetTempo: number;
+    searchQuery?: string;
   };
   featureVector: FeatureVector;
   updatedAt?: string;
@@ -64,7 +65,10 @@ function jitter(base: number, variance: number, min: number, max: number) {
  * Quick WHOOP/Oura sample generators so designers/devs can iterate without
  * wiring real device auth yet. Each call adds a small random delta.
  */
-const SAMPLE_FACTORIES: Record<WearableProvider, () => Record<string, unknown>> = {
+const SAMPLE_FACTORIES: Record<
+  WearableProvider,
+  () => Record<string, unknown>
+> = {
   whoop: () => ({
     timestamp: new Date().toISOString(),
     recovery: {
@@ -125,8 +129,9 @@ type WearableSyncResponse = {
 
 type PlaylistResponse = {
   tracks: PlaylistTrack[];
-  source: 'spotify-search' | 'fallback';
+  source: "spotify-search" | "fallback";
   message?: string;
+  mood?: MoodSnapshot;
 };
 
 const WEARABLE_CARDS: Array<{
@@ -158,7 +163,9 @@ function App() {
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [mood, setMood] = useState<MoodSnapshot | null>(null);
   const [tracks, setTracks] = useState<PlaylistTrack[]>([]);
-  const [playlistSource, setPlaylistSource] = useState<'spotify-search' | 'fallback' | null>(null);
+  const [playlistSource, setPlaylistSource] = useState<
+    "spotify-search" | "fallback" | null
+  >(null);
   const [isSyncing, setIsSyncing] = useState(false);
   const [isGeneratingPlaylist, setIsGeneratingPlaylist] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -170,20 +177,20 @@ function App() {
     normalized: NormalizedMetrics;
     aggregated?: AggregatedMetrics | null;
   } | null>(null);
-  const currentProviderRef = useRef<WearableProvider>('whoop');
+  const currentProviderRef = useRef<WearableProvider>("whoop");
   const [hasPlaylist, setHasPlaylist] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [savedPlaylistUrl, setSavedPlaylistUrl] = useState<string | null>(null);
   const [whoopAuthenticated, setWhoopAuthenticated] = useState(false);
   const [useRealWhoopData, setUseRealWhoopData] = useState(false);
   const [openaiResponse, setOpenaiResponse] = useState<string | null>(null);
-  const userId = 'default'; // In production, get from user session
+  const userId = "default"; // In production, get from user session
 
   const checkWhoopAuthStatus = useCallback(async () => {
     try {
       const response = await fetch(`${API_URL}/api/wearables/whoop/fetch`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId }),
       });
       if (response.ok) {
@@ -198,38 +205,39 @@ function App() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const token = params.get('access_token');
+    const token = params.get("access_token");
     if (token) {
       setAccessToken(token);
-      window.history.replaceState({}, '', '/');
+      window.history.replaceState({}, "", "/");
     }
 
     // Check if Whoop auth was successful
-    const whoopAuth = params.get('whoop_auth');
-    if (whoopAuth === 'success') {
+    const whoopAuth = params.get("whoop_auth");
+    if (whoopAuth === "success") {
       setWhoopAuthenticated(true);
       setUseRealWhoopData(true);
-      window.history.replaceState({}, '', '/');
+      window.history.replaceState({}, "", "/");
     }
 
     // Check for Whoop OAuth errors
-    const whoopError = params.get('error');
+    const whoopError = params.get("error");
     if (whoopError) {
-      const errorDetails = params.get('details') || whoopError;
-      let errorMessage = 'Whoop authentication failed. ';
+      const errorDetails = params.get("details") || whoopError;
+      let errorMessage = "Whoop authentication failed. ";
 
-      if (whoopError === 'whoop_missing_code') {
-        errorMessage += 'Authorization code was not received. This may happen if you denied access or if there\'s a redirect URI mismatch.';
-      } else if (whoopError === 'whoop_oauth_error') {
+      if (whoopError === "whoop_missing_code") {
+        errorMessage +=
+          "Authorization code was not received. This may happen if you denied access or if there's a redirect URI mismatch.";
+      } else if (whoopError === "whoop_oauth_error") {
         errorMessage += errorDetails;
-      } else if (whoopError === 'whoop_auth_failed') {
-        errorMessage += errorDetails || 'Token exchange failed.';
+      } else if (whoopError === "whoop_auth_failed") {
+        errorMessage += errorDetails || "Token exchange failed.";
       } else {
         errorMessage += errorDetails || whoopError;
       }
 
       setError(errorMessage);
-      window.history.replaceState({}, '', '/');
+      window.history.replaceState({}, "", "/");
     }
 
     // Check Whoop auth status on mount
@@ -255,8 +263,8 @@ function App() {
 
     try {
       const response = await fetch(`${API_URL}/api/wearables/whoop/fetch`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId }),
       });
 
@@ -264,24 +272,27 @@ function App() {
       if (!response.ok) {
         if (response.status === 401 && data.authUrl) {
           setWhoopAuthenticated(false);
-          throw new Error('Whoop authentication required. Please authenticate first.');
+          throw new Error(
+            "Whoop authentication required. Please authenticate first."
+          );
         }
-        throw new Error(data.message || 'Failed to fetch Whoop data');
+        throw new Error(data.message || "Failed to fetch Whoop data");
       }
 
       setMood(data.mood);
       setLatestSync({
-        provider: 'whoop',
+        provider: "whoop",
         normalized: data.normalizedMetrics ?? EMPTY_METRICS,
         aggregated: data.aggregatedMetrics ?? null,
       });
       setWhoopAuthenticated(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Whoop data fetch failed');
+      setError(err instanceof Error ? err.message : "Whoop data fetch failed");
     } finally {
       setIsSyncing(false);
     }
   }, []);
+
 
   /**
    * Step 2 – send a synthetic WHOOP/Oura payload to the backend so we can
@@ -336,16 +347,17 @@ function App() {
     [fetchWhoopData, manualScheduleLoad, optionalUserInput]
   );
 
+
   /**
    * Step 4 – request a playlist based on the currently inferred mood.
    */
   const generatePlaylist = useCallback(async () => {
     if (!accessToken) {
-      setError('Connect Spotify before generating a playlist.');
+      setError("Connect Spotify before generating a playlist.");
       return;
     }
     if (!mood) {
-      setError('Sync WHOOP or Oura data first to compute your mood.');
+      setError("Sync WHOOP or Oura data first to compute your mood.");
       return;
     }
 
@@ -366,20 +378,22 @@ function App() {
 
       const data = (await response.json()) as PlaylistResponse;
       if (!response.ok) {
-        throw new Error(data.message || 'Failed to generate playlist');
+        throw new Error(data.message || "Failed to generate playlist");
       }
 
       setTracks(data.tracks);
       setPlaylistSource(data.source);
       setHasPlaylist(true);
       // Store OpenAI response if available
-      if ((data as any).mood?.playlistHints?.searchQuery) {
-        setOpenaiResponse((data as any).mood.playlistHints.searchQuery);
+      if (data.mood?.playlistHints?.searchQuery) {
+        setOpenaiResponse(data.mood.playlistHints.searchQuery);
       } else {
         setOpenaiResponse(null);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Playlist generation failed');
+      setError(
+        err instanceof Error ? err.message : "Playlist generation failed"
+      );
     } finally {
       setIsGeneratingPlaylist(false);
     }
@@ -387,12 +401,12 @@ function App() {
 
   const savePlaylist = useCallback(async () => {
     if (!accessToken) {
-      setError('Connect Spotify before saving a playlist.');
+      setError("Connect Spotify before saving a playlist.");
       return;
     }
-    const uris = tracks.map(track => track.uri).filter(Boolean);
+    const uris = tracks.map((track) => track.uri).filter(Boolean);
     if (!uris.length) {
-      setError('Generate a playlist before saving it.');
+      setError("Generate a playlist before saving it.");
       return;
     }
 
@@ -402,12 +416,13 @@ function App() {
 
     try {
       const response = await fetch(`${API_URL}/api/playlists/save`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           accessToken,
-          name: `Mood • ${mood?.label ?? 'playlist'}`,
-          description: 'Generated from WHOOP/Oura metrics via the playlist-generator demo.',
+          name: `Mood • ${mood?.label ?? "playlist"}`,
+          description:
+            "Generated from WHOOP/Oura metrics via the playlist-generator demo.",
           trackUris: uris,
         }),
       });
@@ -419,23 +434,23 @@ function App() {
       };
 
       if (!response.ok) {
-        throw new Error(data?.message || 'Failed to save playlist');
+        throw new Error(data?.message || "Failed to save playlist");
       }
 
       if (data.playlistUrl) {
         setSavedPlaylistUrl(data.playlistUrl);
-        window.open(data.playlistUrl, '_blank', 'noopener,noreferrer');
+        window.open(data.playlistUrl, "_blank", "noopener,noreferrer");
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Saving playlist failed');
+      setError(err instanceof Error ? err.message : "Saving playlist failed");
     } finally {
       setIsSaving(false);
     }
   }, [accessToken, mood?.label, tracks]);
 
-  const formatMetric = (value: number | null, suffix = '') => {
+  const formatMetric = (value: number | null, suffix = "") => {
     if (value === null || Number.isNaN(value)) {
-      return '—';
+      return "—";
     }
     const display = Math.abs(value) < 10 ? value.toFixed(1) : value.toFixed(0);
     return `${display}${suffix}`;
@@ -444,8 +459,11 @@ function App() {
   const handleSampleClick = useCallback(
     (provider: WearableProvider) => {
       currentProviderRef.current = provider;
-      const useReal = provider === 'whoop' && useRealWhoopData && whoopAuthenticated;
-      syncWearable(provider, useReal).catch(err => setError(err instanceof Error ? err.message : 'Wearable sync failed'));
+      const useReal =
+        provider === "whoop" && useRealWhoopData && whoopAuthenticated;
+      syncWearable(provider, useReal).catch((err) =>
+        setError(err instanceof Error ? err.message : "Wearable sync failed")
+      );
     },
     [syncWearable, useRealWhoopData, whoopAuthenticated]
   );
@@ -474,14 +492,14 @@ function App() {
         <header className="hero">
           <h1>Physiology-aware playlists</h1>
           <p className="lede">
-            Log in with Spotify, stream WHOOP or Oura recovery data, infer your current mood, and generate a
-            playlist tuned to your physiology.
+            Log in with Spotify, stream WHOOP or Oura recovery data, infer your
+            current mood, and generate a playlist tuned to your physiology.
           </p>
         </header>
-      </section >
+      </section>
 
       {/* Step 1 – Spotify */}
-      < section className="panel connect-panel step-panel" >
+      <section className="panel connect-panel step-panel">
         <div className="panel-header">
           <div>
             <p className="eyebrow">Step 1</p>
@@ -508,16 +526,16 @@ function App() {
             Need to switch accounts? Refresh this page.
           </small>
         </div>
-      </section >
+      </section>
 
       {/* Step 2 – Wearable samples */}
-      < section className="panel step-panel" >
+      <section className="panel step-panel">
         <div className="panel-header">
           <div>
             <p className="eyebrow">Step 2</p>
             <h2>WHOOP / Oura data</h2>
           </div>
-          <span className="status-pill">{isSyncing ? 'Syncing…' : 'Idle'}</span>
+          <span className="status-pill">{isSyncing ? "Syncing…" : "Idle"}</span>
         </div>
 
         <h3>Use real Data:</h3>
@@ -596,7 +614,7 @@ function App() {
         <h3>Or, use Mock Data:</h3>
 
         <div className="card-grid">
-          {WEARABLE_CARDS.map(config => (
+          {WEARABLE_CARDS.map((config) => (
             <article key={config.provider} className="card">
               <header>
                 <p className="eyebrow">{config.provider.toUpperCase()}</p>
@@ -619,52 +637,54 @@ function App() {
             </article>
           ))}
         </div>
-        {
-          latestSync && (
-            <div className="sync-summary">
-              <div className="summary-header">
-                <h3>{latestSync.provider.toUpperCase()} snapshot</h3>
-                {latestSync.aggregated && (
-                  <span className="status-pill small">
-                    {latestSync.aggregated.sampleCount} samples total
-                  </span>
-                )}
-              </div>
-              <dl className="metrics-grid compact">
-                <div>
-                  <dt>Readiness</dt>
-                  <dd>{formatMetric(latestSync.normalized.readiness)}</dd>
-                </div>
-                <div>
-                  <dt>HRV</dt>
-                  <dd>{formatMetric(latestSync.normalized.hrv, ' ms')}</dd>
-                </div>
-                <div>
-                  <dt>Sleep score</dt>
-                  <dd>{formatMetric(latestSync.normalized.sleepQuality)}</dd>
-                </div>
-                <div>
-                  <dt>Strain</dt>
-                  <dd>{formatMetric(latestSync.normalized.strain)}</dd>
-                </div>
-                <div>
-                  <dt>Resting HR</dt>
-                  <dd>{formatMetric(latestSync.normalized.restingHeartRate, ' bpm')}</dd>
-                </div>
-              </dl>
+        {latestSync && (
+          <div className="sync-summary">
+            <div className="summary-header">
+              <h3>{latestSync.provider.toUpperCase()} snapshot</h3>
+              {latestSync.aggregated && (
+                <span className="status-pill small">
+                  {latestSync.aggregated.sampleCount} samples total
+                </span>
+              )}
             </div>
-          )
-        }
-      </section >
+            <dl className="metrics-grid compact">
+              <div>
+                <dt>Readiness</dt>
+                <dd>{formatMetric(latestSync.normalized.readiness)}</dd>
+              </div>
+              <div>
+                <dt>HRV</dt>
+                <dd>{formatMetric(latestSync.normalized.hrv, " ms")}</dd>
+              </div>
+              <div>
+                <dt>Sleep score</dt>
+                <dd>{formatMetric(latestSync.normalized.sleepQuality)}</dd>
+              </div>
+              <div>
+                <dt>Strain</dt>
+                <dd>{formatMetric(latestSync.normalized.strain)}</dd>
+              </div>
+              <div>
+                <dt>Resting HR</dt>
+                <dd>
+                  {formatMetric(latestSync.normalized.restingHeartRate, " bpm")}
+                </dd>
+              </div>
+            </dl>
+          </div>
+        )}
+      </section>
 
       {/* Step 3 – Mood summary */}
-      < section className="panel step-panel" >
+      <section className="panel step-panel">
         <div className="panel-header">
           <div>
             <p className="eyebrow">Step 3</p>
             <h2>Mood inference</h2>
           </div>
-          <span className="status-pill mood">{mood ? mood.label : 'Awaiting data'}</span>
+          <span className="status-pill mood">
+            {mood ? mood.label : "Awaiting data"}
+          </span>
         </div>
 
         {mood ? (
@@ -864,13 +884,15 @@ function App() {
       </section>
 
       {/* Step 4 – Playlist */}
-      < section className="panel step-panel" >
+      <section className="panel step-panel">
         <div className="panel-header">
           <div>
             <p className="eyebrow">Step 4</p>
             <h2>Spotify playlist</h2>
           </div>
-          <span className="status-pill">{playlistSource ? `${playlistSource} tracks` : 'Preview'}</span>
+          <span className="status-pill">
+            {playlistSource ? `${playlistSource} tracks` : "Preview"}
+          </span>
         </div>
 
         <div className="spotify-connect">
@@ -880,25 +902,39 @@ function App() {
             </div>
           )}
 
-          <button type="button" onClick={generatePlaylist} disabled={isGeneratingPlaylist || !accessToken}>
+          <button
+            type="button"
+            onClick={generatePlaylist}
+            disabled={isGeneratingPlaylist || !accessToken}
+          >
             {isGeneratingPlaylist
               ? hasPlaylist
-                ? 'Refreshing…'
-                : 'Generating…'
+                ? "Refreshing…"
+                : "Generating…"
               : hasPlaylist
                 ? "Refresh playlist"
                 : "Generate playlist"}
           </button>
           {openaiResponse && (
-            <div style={{
-              marginTop: '1rem',
-              padding: '1rem',
-              background: '#f0f9ff',
-              borderRadius: '8px',
-              border: '1px solid #bae6fd'
-            }}>
-              <strong style={{ color: '#0369a1' }}>✨ OpenAI Search Query:</strong>
-              <p style={{ marginTop: '0.5rem', color: '#0c4a6e', fontFamily: 'monospace' }}>
+            <div
+              style={{
+                marginTop: "1rem",
+                padding: "1rem",
+                background: "#f0f9ff",
+                borderRadius: "8px",
+                border: "1px solid #bae6fd",
+              }}
+            >
+              <strong style={{ color: "#0369a1" }}>
+                ✨ OpenAI Search Query:
+              </strong>
+              <p
+                style={{
+                  marginTop: "0.5rem",
+                  color: "#0c4a6e",
+                  fontFamily: "monospace",
+                }}
+              >
                 {openaiResponse}
               </p>
             </div>
@@ -908,81 +944,81 @@ function App() {
             onClick={savePlaylist}
             disabled={isSaving || !accessToken || !tracks.length}
             className="tertiary-button"
+            style={{ marginTop: "1rem" }}
           >
-            {isSaving ? 'Saving…' : 'Save to Spotify'}
+            {isSaving ? "Saving…" : "Save to Spotify"}
           </button>
         </div>
 
-        {
-          tracks.length > 0 ? (
-            <ol className="track-list">
-              {tracks.map(track => (
-                <li key={track.id} className="track-card">
-                  <div className="track-art">
-                    {track.albumArt ? (
-                      <img src={track.albumArt} alt={`${track.name} cover art`} loading="lazy" />
-                    ) : (
-                      <div className="track-art-placeholder">
-                        {track.name.charAt(0).toUpperCase()}
-                      </div>
-                    )}
-                  </div>
-                  <div className="track-meta">
-                    <p>{track.name}</p>
-                    <small>{track.artists.join(', ')}</small>
-                  </div>
-                  <div className="track-actions">
-                    {track.externalUrl && (
-                      <a
-                        href={track.externalUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="preview-link track-link"
-                      >
-                        Open in Spotify
-                      </a>
-                    )}
-                    {track.preview_url && (
-                      <a
-                        href={track.preview_url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="preview-link track-link track-preview"
-                      >
-                        Preview
-                      </a>
-                    )}
-                  </div>
-                </li>
-              ))}
-            </ol>
-          ) : (
-            <div className="empty-state">
-              <p>No tracks yet. Generate a playlist to see recommendations.</p>
-            </div>
-          )
-        }
-        {
-          savedPlaylistUrl && (
-            <div className="save-banner">
-              <p>
-                Playlist saved.{' '}
-                <a href={savedPlaylistUrl} target="_blank" rel="noreferrer">
-                  Open in Spotify
-                </a>
-              </p>
-            </div>
-          )
-        }
-      </section >
+        {tracks.length > 0 ? (
+          <ol className="track-list">
+            {tracks.map((track) => (
+              <li key={track.id} className="track-card">
+                <div className="track-art">
+                  {track.albumArt ? (
+                    <img
+                      src={track.albumArt}
+                      alt={`${track.name} cover art`}
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className="track-art-placeholder">
+                      {track.name.charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                </div>
+                <div className="track-meta">
+                  <p>{track.name}</p>
+                  <small>{track.artists.join(", ")}</small>
+                </div>
+                <div className="track-actions">
+                  {track.externalUrl && (
+                    <a
+                      href={track.externalUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="preview-link track-link"
+                    >
+                      Open in Spotify
+                    </a>
+                  )}
+                  {track.preview_url && (
+                    <a
+                      href={track.preview_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="preview-link track-link track-preview"
+                    >
+                      Preview
+                    </a>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ol>
+        ) : (
+          <div className="empty-state">
+            <p>No tracks yet. Generate a playlist to see recommendations.</p>
+          </div>
+        )}
+        {savedPlaylistUrl && (
+          <div className="save-banner">
+            <p>
+              Playlist saved.{" "}
+              <a href={savedPlaylistUrl} target="_blank" rel="noreferrer">
+                Open in Spotify
+              </a>
+            </p>
+          </div>
+        )}
+      </section>
 
       {error && (
         <div className="error-banner">
           <p>{error}</p>
         </div>
-      )
-      }
-    </div >
+      )}
+    </div>
   );
 }
 

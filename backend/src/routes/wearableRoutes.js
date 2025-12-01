@@ -13,11 +13,11 @@ const whoopService = require('../services/whoopService');
 
 const router = express.Router();
 
-router.get('/providers', (_req, res) => {
+router.get("/providers", (_req, res) => {
   res.json({ providers: adapters });
 });
 
-router.get('/latest', (_req, res) => {
+router.get("/latest", (_req, res) => {
   res.json({ data: getWearableData(), aggregated: getAggregatedMetrics() });
 });
 
@@ -26,7 +26,9 @@ router.post('/sync', async (req, res, next) => {
     const { provider, payload, manualScheduleLoad, optionalUserInput } = req.body || {};
 
     if (!provider || !payload) {
-      return res.status(400).json({ message: 'provider and payload are required' });
+      return res
+        .status(400)
+        .json({ message: "provider and payload are required" });
     }
 
     const normalized = normalize(provider, payload);
@@ -118,4 +120,3 @@ router.post('/whoop/fetch', async (req, res, next) => {
 });
 
 module.exports = router;
-
