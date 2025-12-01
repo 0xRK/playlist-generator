@@ -115,7 +115,7 @@ async function fetchLiveTracks(accessToken, mood, useAI = true) {
 
   for (const query of attempts.filter(Boolean)) {
     try {
-      const items = await searchTracks(accessToken, query, 50);
+      const items = await searchTracks(accessToken, query, 30);
       if (items.length) {
         console.log(`Found ${items.length} tracks for query: "${query}"`);
         const tracks = shuffle(items).slice(0, 20).map(mapTrack);
