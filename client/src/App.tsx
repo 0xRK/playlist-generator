@@ -295,6 +295,25 @@ function App() {
 
 
   /**
+   * Fetch weather on mount
+   */
+  useEffect(() => {
+    const fetchWeather = async () => {
+      try {
+        const response = await fetch(`${API_URL}/api/weather`);
+        if (response.ok) {
+          const weather = await response.json();
+          setCurrentWeather(weather);
+        }
+      } catch (err) {
+        console.error("Failed to fetch initial weather:", err);
+      }
+    };
+
+    fetchWeather();
+  }, []);
+
+  /**
    * Step 2 – send a synthetic WHOOP/Oura payload to the backend so we can
    * compute mood heuristics without calling the real APIs yet.
    */

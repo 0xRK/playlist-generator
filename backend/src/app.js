@@ -42,6 +42,7 @@ function createApp() {
   app.use('/api/mood', moodRoutes);
   app.use('/api/playlists', playlistRoutes);
   app.use('/api/ai-playlists', aiPlaylistRoutes);
+  app.use('/api/weather', require('./routes/weatherRoutes'));
 
   // Simple error handler to keep responses consistent for the skeleton.
   // eslint-disable-next-line no-unused-vars
