@@ -1,0 +1,426 @@
+{
+  "metadata": {
+    "timestamp": "2025-12-06T21:56:02.275Z",
+    "openaiEnabled": true,
+    "spotifyEnabled": true,
+    "description": "Correlation analysis between biometric inputs and playlist recommendations (OpenAI Only)"
+  },
+  "biometricCorrelation": {
+    "readinessGradient": [
+      {
+        "readiness": 10,
+        "openai": {
+          "mood": "recovery",
+          "energy": 0.2,
+          "valence": 0.6,
+          "tempo": 70
+        }
+      },
+      {
+        "readiness": 20,
+        "openai": {
+          "mood": "recovery",
+          "energy": 0.2,
+          "valence": 0.5,
+          "tempo": 70
+        }
+      },
+      {
+        "readiness": 30,
+        "openai": {
+          "mood": "recovery",
+          "energy": 0.3,
+          "valence": 0.7,
+          "tempo": 70
+        }
+      },
+      {
+        "readiness": 40,
+        "openai": {
+          "mood": "recovery",
+          "energy": 0.3,
+          "valence": 0.6,
+          "tempo": 70
+        }
+      },
+      {
+        "readiness": 50,
+        "openai": {
+          "mood": "flow",
+          "energy": 0.5,
+          "valence": 0.7,
+          "tempo": 90
+        }
+      },
+      {
+        "readiness": 60,
+        "openai": {
+          "mood": "flow",
+          "energy": 0.5,
+          "valence": 0.7,
+          "tempo": 90
+        }
+      },
+      {
+        "readiness": 70,
+        "openai": {
+          "mood": "flow",
+          "energy": 0.6,
+          "valence": 0.7,
+          "tempo": 80
+        }
+      },
+      {
+        "readiness": 80,
+        "openai": {
+          "mood": "flow",
+          "energy": 0.7,
+          "valence": 0.8,
+          "tempo": 120
+        }
+      },
+      {
+        "readiness": 90,
+        "openai": {
+          "mood": "flow",
+          "energy": 0.7,
+          "valence": 0.8,
+          "tempo": 120
+        }
+      },
+      {
+        "readiness": 100,
+        "openai": {
+          "mood": "flow",
+          "energy": 0.7,
+          "valence": 0.8,
+          "tempo": 100
+        }
+      }
+    ],
+    "sleepGradient": [
+      {
+        "sleepQuality": 10,
+        "openai": {
+          "mood": "flow",
+          "energy": 0.6,
+          "valence": 0.7,
+          "tempo": 80
+        }
+      },
+      {
+        "sleepQuality": 20,
+        "openai": {
+          "mood": "flow",
+          "energy": 0.6,
+          "valence": 0.7,
+          "tempo": 90
+        }
+      },
+      {
+        "sleepQuality": 30,
+        "openai": {
+          "mood": "flow",
+          "energy": 0.6,
+          "valence": 0.7,
+          "tempo": 80
+        }
+      },
+      {
+        "sleepQuality": 40,
+        "openai": {
+          "mood": "flow",
+          "energy": 0.6,
+          "valence": 0.7,
+          "tempo": 90
+        }
+      },
+      {
+        "sleepQuality": 50,
+        "openai": {
+          "mood": "flow",
+          "energy": 0.6,
+          "valence": 0.7,
+          "tempo": 90
+        }
+      },
+      {
+        "sleepQuality": 60,
+        "openai": {
+          "mood": "flow",
+          "energy": 0.6,
+          "valence": 0.7,
+          "tempo": 90
+        }
+      },
+      {
+        "sleepQuality": 70,
+        "openai": {
+          "mood": "flow",
+          "energy": 0.7,
+          "valence": 0.6,
+          "tempo": 120
+        }
+      },
+      {
+        "sleepQuality": 80,
+        "openai": {
+          "mood": "flow",
+          "energy": 0.6,
+          "valence": 0.7,
+          "tempo": 100
+        }
+      },
+      {
+        "sleepQuality": 90,
+        "openai": {
+          "mood": "flow",
+          "energy": 0.6,
+          "valence": 0.8,
+          "tempo": 100
+        }
+      },
+      {
+        "sleepQuality": 100,
+        "openai": {
+          "mood": "flow",
+          "energy": 0.7,
+          "valence": 0.8,
+          "tempo": 120
+        }
+      }
+    ],
+    "strainGradient": [
+      {
+        "strain": 0,
+        "openai": {
+          "mood": "flow",
+          "energy": 0.5,
+          "valence": 0.6,
+          "tempo": 80
+        }
+      },
+      {
+        "strain": 3,
+        "openai": {
+          "mood": "flow",
+          "energy": 0.6,
+          "valence": 0.7,
+          "tempo": 80
+        }
+      },
+      {
+        "strain": 6,
+        "openai": {
+          "mood": "flow",
+          "energy": 0.6,
+          "valence": 0.5,
+          "tempo": 90
+        }
+      },
+      {
+        "strain": 9,
+        "openai": {
+          "mood": "flow",
+          "energy": 0.6,
+          "valence": 0.7,
+          "tempo": 80
+        }
+      },
+      {
+        "strain": 12,
+        "openai": {
+          "mood": "flow",
+          "energy": 0.6,
+          "valence": 0.7,
+          "tempo": 90
+        }
+      },
+      {
+        "strain": 15,
+        "openai": {
+          "mood": "flow",
+          "energy": 0.6,
+          "valence": 0.7,
+          "tempo": 90
+        }
+      },
+      {
+        "strain": 18,
+        "openai": {
+          "mood": "flow",
+          "energy": 0.6,
+          "valence": 0.7,
+          "tempo": 80
+        }
+      },
+      {
+        "strain": 21,
+        "openai": {
+          "mood": "flow",
+          "energy": 0.6,
+          "valence": 0.7,
+          "tempo": 100
+        }
+      }
+    ],
+    "correlations": {
+      "openai": {
+        "readinessToEnergy": 0.9720912638617772,
+        "readinessToValence": 0.8672531474667242,
+        "readinessToTempo": 0.830348758212823,
+        "sleepToEnergy": 0.522232967867103,
+        "strainToEnergy": 0.5773502691896523
+      }
+    }
+  },
+  "spotifyValidation": {
+    "moods": {
+      "flow": {
+        "query": "\"deep focus\" instrumental",
+        "trackCount": 20,
+        "sampleTracks": [
+          {
+            "name": "YouTube Cypher, Vol. 2",
+            "artist": "Crypt"
+          },
+          {
+            "name": "Deep in the Story",
+            "artist": "Calm Kids Studio"
+          },
+          {
+            "name": "Lyrics",
+            "artist": "A.L."
+          },
+          {
+            "name": "My Ego",
+            "artist": "CA$PAR"
+          },
+          {
+            "name": "Deep Focus",
+            "artist": "The Whispering Hymn"
+          }
+        ],
+        "audioFeaturesAvailable": false,
+        "limitation": "Spotify restricted Audio Features API for development apps (Nov 2024)",
+        "target": {
+          "energy": 0.65,
+          "valence": 0.55,
+          "tempo": 110
+        },
+        "actual": null,
+        "deviation": null
+      },
+      "amped": {
+        "query": "high energy workout",
+        "trackCount": 20,
+        "sampleTracks": [
+          {
+            "name": "High Energy",
+            "artist": "Soundride XL"
+          },
+          {
+            "name": "High Energy - 132 Bpm",
+            "artist": "Fascination"
+          },
+          {
+            "name": "Right Now (130 BPM)",
+            "artist": "High Energy Workout Music"
+          },
+          {
+            "name": "High Energy Fitness",
+            "artist": "Alpharisc"
+          },
+          {
+            "name": "High Energy Workout",
+            "artist": "Hot Beat Universe"
+          }
+        ],
+        "audioFeaturesAvailable": false,
+        "limitation": "Spotify restricted Audio Features API for development apps (Nov 2024)",
+        "target": {
+          "energy": 0.85,
+          "valence": 0.6,
+          "tempo": 130
+        },
+        "actual": null,
+        "deviation": null
+      },
+      "recovery": {
+        "query": "calm acoustic relaxation",
+        "trackCount": 20,
+        "sampleTracks": [
+          {
+            "name": "Acoustic Chill",
+            "artist": "Acoustic Instrumental Collection"
+          },
+          {
+            "name": "Sleep and Relaxation",
+            "artist": "Acoustic Instrumental Collection"
+          },
+          {
+            "name": "Calm Sounds For Relaxation",
+            "artist": "Spa"
+          },
+          {
+            "name": "Calm Guitar",
+            "artist": "Relaxing Music Therapy"
+          },
+          {
+            "name": "Calming Sleep Music",
+            "artist": "Spa Music Relaxation"
+          }
+        ],
+        "audioFeaturesAvailable": false,
+        "limitation": "Spotify restricted Audio Features API for development apps (Nov 2024)",
+        "target": {
+          "energy": 0.35,
+          "valence": 0.5,
+          "tempo": 80
+        },
+        "actual": null,
+        "deviation": null
+      },
+      "reset": {
+        "query": "feel good indie pop",
+        "trackCount": 20,
+        "sampleTracks": [
+          {
+            "name": "Feeling Good",
+            "artist": "SUPER-Hi"
+          },
+          {
+            "name": "Feel Good",
+            "artist": "Saint Motel"
+          },
+          {
+            "name": "Blue Bombers",
+            "artist": "Emcee KB"
+          },
+          {
+            "name": "Good Intentions",
+            "artist": "Magdalena Bay"
+          },
+          {
+            "name": "Feel Good",
+            "artist": "Polo & Pan"
+          }
+        ],
+        "audioFeaturesAvailable": false,
+        "limitation": "Spotify restricted Audio Features API for development apps (Nov 2024)",
+        "target": {
+          "energy": 0.5,
+          "valence": 0.55,
+          "tempo": 100
+        },
+        "actual": null,
+        "deviation": null
+      }
+    },
+    "summary": {
+      "avgEnergyDeviation": 0,
+      "avgValenceDeviation": 0,
+      "avgTempoDeviation": 0
+    }
+  }
+}
